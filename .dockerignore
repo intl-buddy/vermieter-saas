@@ -1,0 +1,28 @@
+# Dependencies (reinstalled inside the image via `npm ci`)
+node_modules
+**/node_modules
+
+# Version control
+.git
+.gitignore
+
+# Local env files (NEXT_PUBLIC_* come in as build args instead)
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Build outputs (regenerated during the image build)
+.next
+**/.next
+.turbo
+**/.turbo
+out
+**/out
+dist
+**/dist
+
+# Misc
+.DS_Store
+Dockerfile
+.dockerignore

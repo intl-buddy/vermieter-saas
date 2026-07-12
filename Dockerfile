@@ -1,0 +1,46 @@
+# syntax=docker/dockerfile:1
+
+# ---- Stage 1: install dependencies for the whole monorepo ----
+FROM node:22-alpine AS deps
+WORKDIR /app
+# Copy the full monorepo and do a clean, lockfile-pinned install.
+COPY . .
+RUN npm ci
+
+# ---- Stage 2: build only the web app with turbo ----
+FROM deps AS builder
+WORKDIR /app
+
+# Next.js inlines NEXT_PUBLIC_* values at build time, so the Supabase config
+# has to be present as build args (Coolify: set these under Build Variables).
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+RUN npx turbo run build --filter=web
+
+# ---- Stage 3: minimal production runtime ----
+FROM node:22-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+# Bind to all interfaces so the container is reachable from outside.
+ENV HOSTNAME=0.0.0.0
+
+# Run as an unprivileged user.
+RUN addgroup -g 1001 -S nodejs \
+  && adduser -u 1001 -S nextjs -G nodejs
+
+# The standalone output already bundles the traced node_modules in the
+# monorepo layout (apps/web/server.js, packages/*, node_modules/*).
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
+
+USER nextjs
+
+EXPOSE 3000
+
+CMD ["node", "apps/web/server.js"]
