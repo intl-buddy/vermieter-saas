@@ -1,18 +1,19 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
+import { toast } from "sonner";
 import { markDunningSent, type DunningState } from "../dunningActions";
-import styles from "./detail.module.css";
+import { Button } from "@/components/ui/button";
 
 const initialState: DunningState = {};
 
-function Button() {
+function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className={styles.markSentBtn} disabled={pending}>
+    <Button type="submit" variant="outline" size="sm" disabled={pending}>
       {pending ? "…" : "Als versendet markieren"}
-    </button>
+    </Button>
   );
 }
 
@@ -25,16 +26,16 @@ export function MarkSentButton({
 }) {
   const [state, formAction] = useActionState(markDunningSent, initialState);
 
+  useEffect(() => {
+    if (state.error) toast.error(state.error);
+    if (state.success) toast.success(state.success);
+  }, [state]);
+
   return (
     <form action={formAction}>
       <input type="hidden" name="id" value={dunningId} />
       <input type="hidden" name="tenant_id" value={tenantId} />
-      <Button />
-      {state.error ? (
-        <span className={styles.error} style={{ marginLeft: 8 }}>
-          {state.error}
-        </span>
-      ) : null}
+      <SubmitButton />
     </form>
   );
 }

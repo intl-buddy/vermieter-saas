@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "../../../../lib/supabase/server";
-import { formatDate } from "../../../../lib/format";
-import { SiteHeader } from "../../../components/SiteHeader";
-import {
-  MahnungPreviewForm,
-  type PreviewCharge,
-} from "./MahnungPreviewForm";
-import styles from "../detail.module.css";
+import { ArrowLeft } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { formatDate } from "@/lib/format";
+import { AppShell } from "@/components/app-shell";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { MahnungPreviewForm, type PreviewCharge } from "./MahnungPreviewForm";
 
 /** Heutiges Datum als `YYYY-MM-DD` in lokaler Zeit. */
 function todayIso(): string {
@@ -74,23 +73,29 @@ export default async function MahnungPreviewPage({
   }));
   const openTotal = charges.reduce((sum, c) => sum + c.openAmount, 0);
 
+  const backLink = (
+    <Button asChild variant="ghost" size="sm" className="-ml-2 mb-3">
+      <Link href={`/mieteingang/${tenantId}`}>
+        <ArrowLeft className="size-4" />
+        Zurück zum Mieter
+      </Link>
+    </Button>
+  );
+
   // Kein Rückstand → keine Mahnung nötig.
   if (openTotal <= 0) {
     return (
-      <div className={styles.container}>
-        <SiteHeader />
-        <main className={styles.main}>
-          <div className={styles.breadcrumb}>
-            <Link href={`/mieteingang/${tenantId}`} className={styles.backLink}>
-              ← Zurück zum Mieter
-            </Link>
-          </div>
-          <h1 className={styles.title}>Mahnung erstellen</h1>
-          <div className={styles.empty}>
+      <AppShell title="Mahnung erstellen" userEmail={user.email ?? ""}>
+        {backLink}
+        <h1 className="mb-4 text-2xl font-bold tracking-tight sm:text-3xl">
+          Mahnung erstellen
+        </h1>
+        <Card>
+          <CardContent className="p-8 text-center text-sm text-muted-foreground">
             Für {tenantName} bestehen aktuell keine offenen Forderungen.
-          </div>
-        </main>
-      </div>
+          </CardContent>
+        </Card>
+      </AppShell>
     );
   }
 
@@ -122,29 +127,26 @@ export default async function MahnungPreviewPage({
   const dunningFee = profile?.dunning_fee ?? 0;
 
   return (
-    <div className={styles.container}>
-      <SiteHeader />
-      <main className={styles.main}>
-        <div className={styles.breadcrumb}>
-          <Link href={`/mieteingang/${tenantId}`} className={styles.backLink}>
-            ← Zurück zum Mieter
-          </Link>
-        </div>
+    <AppShell title="Mahnung erstellen" userEmail={user.email ?? ""}>
+      {backLink}
 
-        <h1 className={styles.title}>Mahnung erstellen</h1>
-        <p className={styles.subtitle}>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          Mahnung erstellen
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Mieter: {tenantName}. Prüfe Stufe, Gebühr und Frist vor dem Erzeugen.
         </p>
+      </div>
 
-        <MahnungPreviewForm
-          tenantId={tenantId}
-          suggestedLevel={suggestedLevel}
-          dunningFee={dunningFee}
-          charges={charges}
-          defaultDeadline={isoInDays(deadlineDays)}
-          hint={hint}
-        />
-      </main>
-    </div>
+      <MahnungPreviewForm
+        tenantId={tenantId}
+        suggestedLevel={suggestedLevel}
+        dunningFee={dunningFee}
+        charges={charges}
+        defaultDeadline={isoInDays(deadlineDays)}
+        hint={hint}
+      />
+    </AppShell>
   );
 }

@@ -2,17 +2,28 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
+import { toast } from "sonner";
 import { recordPayment, type PaymentState } from "../actions";
-import styles from "./detail.module.css";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const initialState: PaymentState = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className={styles.submit} disabled={pending}>
+    <Button type="submit" disabled={pending}>
       {pending ? "Wird gespeichert …" : "Zahlung erfassen"}
-    </button>
+    </Button>
   );
 }
 
@@ -30,95 +41,80 @@ export function PaymentForm({ tenantId }: { tenantId: string }) {
   // Nach erfolgreicher Erfassung das Formular zurücksetzen; die Server Action
   // hat die Daten bereits über revalidatePath neu geladen.
   useEffect(() => {
+    if (state.error) toast.error(state.error);
     if (state.success) {
+      toast.success(state.success);
       formRef.current?.reset();
     }
-  }, [state.success]);
+  }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} className={styles.form}>
+    <form ref={formRef} action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="tenant_id" value={tenantId} />
 
-      {state.error ? <div className={styles.formError}>{state.error}</div> : null}
-      {state.success ? (
-        <div className={styles.formSuccess}>{state.success}</div>
-      ) : null}
-
-      <div className={styles.formRow}>
-        <div className={styles.field}>
-          <label htmlFor="amount" className={styles.label}>
-            Betrag (€)
-          </label>
-          <input
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="amount">Betrag (€)</Label>
+          <Input
             id="amount"
             name="amount"
             type="number"
             inputMode="decimal"
             step="0.01"
             required
-            className={styles.input}
             placeholder="z. B. 750,00 (negativ = Rückbuchung)"
           />
         </div>
 
-        <div className={styles.field}>
-          <label htmlFor="paid_at" className={styles.label}>
-            Wertstellungsdatum
-          </label>
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="paid_at">Wertstellungsdatum</Label>
+          <Input
             id="paid_at"
             name="paid_at"
             type="date"
             required
             defaultValue={todayIso()}
-            className={styles.input}
           />
         </div>
 
-        <div className={styles.field}>
-          <label htmlFor="payer" className={styles.label}>
-            Zahler
-          </label>
-          <select
-            id="payer"
-            name="payer"
-            defaultValue="tenant"
-            className={styles.input}
-          >
-            <option value="tenant">Mieter</option>
-            <option value="jobcenter">Jobcenter</option>
-            <option value="other">Sonstige</option>
-          </select>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="payer">Zahler</Label>
+          <Select name="payer" defaultValue="tenant">
+            <SelectTrigger id="payer">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="tenant">Mieter</SelectItem>
+              <SelectItem value="jobcenter">Jobcenter</SelectItem>
+              <SelectItem value="other">Sonstige</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      <div className={styles.field}>
-        <label htmlFor="bank_reference" className={styles.label}>
-          Verwendungszweck
-        </label>
-        <input
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="bank_reference">Verwendungszweck</Label>
+        <Input
           id="bank_reference"
           name="bank_reference"
           type="text"
-          className={styles.input}
           placeholder="z. B. Miete Juli 2026"
         />
       </div>
 
-      <div className={styles.field}>
-        <label htmlFor="notes" className={styles.label}>
-          Notiz
-        </label>
-        <textarea
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="notes">Notiz</Label>
+        <Textarea
           id="notes"
           name="notes"
           rows={2}
-          className={styles.textarea}
           placeholder="Interne Anmerkung (optional)"
         />
       </div>
 
-      <SubmitButton />
+      <div>
+        <SubmitButton />
+      </div>
     </form>
   );
 }

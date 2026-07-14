@@ -1,20 +1,15 @@
 import { redirect } from "next/navigation";
-import { createClient } from "../../lib/supabase/server";
-import { SiteHeader } from "../components/SiteHeader";
+import { createClient } from "@/lib/supabase/server";
+import { AppShell } from "@/components/app-shell";
 import { EinstellungenForm } from "./EinstellungenForm";
-import styles from "./einstellungen.module.css";
 
-export const metadata = {
-  title: "Einstellungen · Vermieter SaaS",
-};
+export const metadata = { title: "Einstellungen · tefter" };
 
 export default async function EinstellungenPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  // Zusätzliche Absicherung zur Middleware.
   if (!user) {
     redirect("/login");
   }
@@ -27,7 +22,6 @@ export default async function EinstellungenPage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  // Fallback, falls der Profil-Datensatz (noch) fehlt.
   const values = {
     full_name: profile?.full_name ?? "",
     company_name: profile?.company_name ?? null,
@@ -43,19 +37,19 @@ export default async function EinstellungenPage() {
   };
 
   return (
-    <div className={styles.container}>
-      <SiteHeader />
+    <AppShell title="Einstellungen" userEmail={user.email ?? ""}>
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          Einstellungen
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">Dein Vermieter-Profil.</p>
+      </div>
 
-      <main className={styles.main}>
-        <h1 className={styles.title}>Einstellungen</h1>
-        <p className={styles.subtitle}>Dein Vermieter-Profil.</p>
+      <div className="mb-6 rounded-xl border border-secondary-100 bg-secondary-50 px-4 py-3 text-sm text-secondary-800">
+        Diese Angaben erscheinen als Absender auf deinen Mahnschreiben.
+      </div>
 
-        <p className={styles.hint}>
-          Diese Angaben erscheinen als Absender auf deinen Mahnschreiben.
-        </p>
-
-        <EinstellungenForm profile={values} />
-      </main>
-    </div>
+      <EinstellungenForm profile={values} />
+    </AppShell>
   );
 }

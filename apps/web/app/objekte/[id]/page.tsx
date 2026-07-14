@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Database } from "@repo/core";
-import { createClient } from "../../../lib/supabase/server";
-import { formatCurrency, formatDate } from "../../../lib/format";
-import { SiteHeader } from "../../components/SiteHeader";
+import { createClient } from "@/lib/supabase/server";
+import { formatCurrency, formatDate } from "@/lib/format";
+import { AppShell } from "@/components/app-shell";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { PropertyForm } from "../PropertyForm";
 import { UnitForm } from "./UnitForm";
 import { TenantForm } from "./TenantForm";
-import styles from "../objekte.module.css";
 
 type UnitType = Database["public"]["Enums"]["unit_type"];
 type DepositType = Database["public"]["Enums"]["deposit_type"];
@@ -30,6 +31,15 @@ const DEPOSIT_TYPE_LABELS: Record<DepositType, string> = {
 /** Formatiert eine optionale m²-Angabe. */
 function area(value: number | null): string {
   return value == null ? "–" : `${value.toLocaleString("de-DE")} m²`;
+}
+
+function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="text-sm font-medium">{value}</dd>
+    </div>
+  );
 }
 
 export default async function ObjektDetailPage({
@@ -104,162 +114,157 @@ export default async function ObjektDetailPage({
   }
 
   return (
-    <div className={styles.container}>
-      <SiteHeader />
+    <AppShell title={property.name} userEmail={user.email ?? ""}>
+      <div className="mb-4">
+        <Link
+          href="/objekte"
+          className="text-sm font-medium text-primary hover:underline"
+        >
+          ← Zurück zur Objektliste
+        </Link>
+      </div>
 
-      <main className={styles.main}>
-        <div className={styles.breadcrumb}>
-          <Link href="/objekte" className={styles.backLink}>
-            ← Zurück zur Objektliste
-          </Link>
-        </div>
-
-        <h1 className={styles.title}>{property.name}</h1>
-        <p className={styles.metaLine}>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          {property.name}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           {property.street} {property.house_number}, {property.zip}{" "}
           {property.city}
         </p>
-        <p className={styles.metaLine}>
+        <p className="text-sm text-muted-foreground">
           Baujahr: {property.build_year ?? "–"} · Wohnfläche gesamt:{" "}
           {area(property.total_living_area)}
         </p>
+      </div>
 
-        <details className={styles.disclosure} style={{ marginTop: 20 }}>
-          <summary className={styles.disclosureSummary}>
-            Objekt bearbeiten
+      <details className="mb-8 rounded-xl border border-neutral-200 bg-white shadow-sm">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-primary marker:hidden hover:text-primary-600">
+          Objekt bearbeiten
+        </summary>
+        <div className="border-t border-neutral-100 p-4">
+          <PropertyForm mode="edit" property={property} />
+        </div>
+      </details>
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Einheiten</h2>
+
+        <details className="mb-4 rounded-xl border border-neutral-200 bg-white shadow-sm">
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-primary marker:hidden hover:text-primary-600">
+            + Neue Einheit anlegen
           </summary>
-          <div className={styles.disclosureBody}>
-            <PropertyForm mode="edit" property={property} />
+          <div className="border-t border-neutral-100 p-4">
+            <UnitForm mode="create" propertyId={property.id} />
           </div>
         </details>
 
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Einheiten</h2>
-
-          <details className={styles.disclosure}>
-            <summary className={styles.disclosureSummary}>
-              + Neue Einheit anlegen
-            </summary>
-            <div className={styles.disclosureBody}>
-              <UnitForm mode="create" propertyId={property.id} />
-            </div>
-          </details>
-
-          {unitsError ? (
-            <div className={styles.error}>
+        {unitsError ? (
+          <Card>
+            <CardContent className="p-6 text-sm text-danger-700">
               Die Einheiten konnten nicht geladen werden: {unitsError.message}
-            </div>
-          ) : !units || units.length === 0 ? (
-            <div className={styles.empty}>
-              Noch keine Einheiten. Lege oben die erste Einheit an.
-            </div>
-          ) : (
-            <div className={styles.unitList}>
-              {units.map((unit) => {
-                const tenant = activeTenantByUnit.get(unit.id);
-                return (
-                  <div key={unit.id} className={styles.unitCard}>
-                    <div className={styles.unitHeader}>
-                      <div>
-                        <h3 className={styles.unitTitle}>
-                          {unit.label}
-                          <span className={styles.badge} style={{ marginLeft: 8 }}>
-                            {UNIT_TYPE_LABELS[unit.unit_type]}
-                          </span>
-                        </h3>
-                        <p className={styles.unitMeta}>
-                          Etage: {unit.floor || "–"} · Fläche:{" "}
-                          {area(unit.living_area)} · Zimmer:{" "}
-                          {unit.rooms ?? "–"}
-                        </p>
-                      </div>
+            </CardContent>
+          </Card>
+        ) : !units || units.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center gap-1 p-10 text-center">
+              <p className="text-base font-medium">
+                Noch keine Einheiten – lege die erste an
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Nutze „+ Neue Einheit anlegen" oben.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {units.map((unit) => {
+              const tenant = activeTenantByUnit.get(unit.id);
+              return (
+                <Card key={unit.id}>
+                  <CardContent className="p-5">
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-semibold">{unit.label}</h3>
+                      <Badge variant="neutral">
+                        {UNIT_TYPE_LABELS[unit.unit_type]}
+                      </Badge>
                     </div>
+                    <p className="mb-4 text-sm text-muted-foreground">
+                      Etage: {unit.floor || "–"} · Fläche: {area(unit.living_area)}{" "}
+                      · Zimmer: {unit.rooms ?? "–"}
+                    </p>
 
-                    <div className={styles.unitBody}>
-                      {tenant ? (
-                        <div className={styles.tenantBox}>
-                          <p className={styles.tenantName}>
-                            {tenant.first_name} {tenant.last_name}
-                            <span className={styles.activeTag}>
-                              Aktives Mietverhältnis
-                            </span>
-                          </p>
-                          <dl className={styles.tenantGrid}>
-                            <div>
-                              <dt>Einzug</dt>
-                              <dd>{formatDate(tenant.move_in_date)}</dd>
-                            </div>
-                            <div>
-                              <dt>Kaltmiete</dt>
-                              <dd>{formatCurrency(tenant.cold_rent)}</dd>
-                            </div>
-                            <div>
-                              <dt>NK-Vorauszahlung</dt>
-                              <dd>
-                                {formatCurrency(tenant.operating_costs_advance)}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt>Heizkosten-VZ</dt>
-                              <dd>
-                                {formatCurrency(tenant.heating_costs_advance)}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt>Fälligkeitstag</dt>
-                              <dd>{tenant.rent_due_day}.</dd>
-                            </div>
-                            <div>
-                              <dt>Personen</dt>
-                              <dd>{tenant.persons_count}</dd>
-                            </div>
-                            <div>
-                              <dt>Kaution</dt>
-                              <dd>
-                                {formatCurrency(tenant.deposit_amount)} (
-                                {DEPOSIT_TYPE_LABELS[tenant.deposit_type]})
-                              </dd>
-                            </div>
-                            <div>
-                              <dt>Kontakt</dt>
-                              <dd>{tenant.email || tenant.phone || "–"}</dd>
-                            </div>
-                          </dl>
-                        </div>
-                      ) : (
-                        <details className={styles.subDisclosure}>
-                          <summary className={styles.disclosureSummary}>
-                            + Mieter anlegen
-                          </summary>
-                          <div className={styles.disclosureBody}>
-                            <TenantForm
-                              unitId={unit.id}
-                              propertyId={property.id}
-                            />
-                          </div>
-                        </details>
-                      )}
-
-                      <details className={styles.subDisclosure}>
-                        <summary className={styles.disclosureSummary}>
-                          Einheit bearbeiten
-                        </summary>
-                        <div className={styles.disclosureBody}>
-                          <UnitForm
-                            mode="edit"
-                            propertyId={property.id}
-                            unit={unit}
+                    {tenant ? (
+                      <div className="rounded-xl border border-secondary-100 bg-secondary-50/50 p-4">
+                        <p className="mb-3 flex flex-wrap items-center gap-2 font-semibold">
+                          {tenant.first_name} {tenant.last_name}
+                          <Badge variant="success">Aktives Mietverhältnis</Badge>
+                        </p>
+                        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                          <InfoItem
+                            label="Einzug"
+                            value={formatDate(tenant.move_in_date)}
                           />
+                          <InfoItem
+                            label="Kaltmiete"
+                            value={formatCurrency(tenant.cold_rent)}
+                          />
+                          <InfoItem
+                            label="NK-Vorauszahlung"
+                            value={formatCurrency(tenant.operating_costs_advance)}
+                          />
+                          <InfoItem
+                            label="Heizkosten-VZ"
+                            value={formatCurrency(tenant.heating_costs_advance)}
+                          />
+                          <InfoItem
+                            label="Fälligkeitstag"
+                            value={`${tenant.rent_due_day}.`}
+                          />
+                          <InfoItem
+                            label="Personen"
+                            value={tenant.persons_count}
+                          />
+                          <InfoItem
+                            label="Kaution"
+                            value={`${formatCurrency(tenant.deposit_amount)} (${DEPOSIT_TYPE_LABELS[tenant.deposit_type]})`}
+                          />
+                          <InfoItem
+                            label="Kontakt"
+                            value={tenant.email || tenant.phone || "–"}
+                          />
+                        </dl>
+                      </div>
+                    ) : (
+                      <details className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50">
+                        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-primary marker:hidden hover:text-primary-600">
+                          + Mieter anlegen
+                        </summary>
+                        <div className="border-t border-neutral-200 bg-white p-4">
+                          <TenantForm unitId={unit.id} propertyId={property.id} />
                         </div>
                       </details>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </main>
-    </div>
+                    )}
+
+                    <details className="mt-3 rounded-xl border border-dashed border-neutral-300 bg-neutral-50">
+                      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-primary marker:hidden hover:text-primary-600">
+                        Einheit bearbeiten
+                      </summary>
+                      <div className="border-t border-neutral-200 bg-white p-4">
+                        <UnitForm
+                          mode="edit"
+                          propertyId={property.id}
+                          unit={unit}
+                        />
+                      </div>
+                    </details>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </AppShell>
   );
 }

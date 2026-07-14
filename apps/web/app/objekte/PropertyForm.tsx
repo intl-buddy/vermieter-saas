@@ -2,12 +2,12 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
-import {
-  createProperty,
-  updateProperty,
-  type FormState,
-} from "./actions";
-import styles from "./objekte.module.css";
+import { toast } from "sonner";
+import { createProperty, updateProperty, type FormState } from "./actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 const initialState: FormState = {};
 
@@ -26,9 +26,9 @@ type PropertyValues = {
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className={styles.submit} disabled={pending}>
+    <Button type="submit" disabled={pending}>
       {pending ? "Wird gespeichert …" : label}
-    </button>
+    </Button>
   );
 }
 
@@ -44,105 +44,80 @@ export function PropertyForm({
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (state.success && mode === "create") {
-      formRef.current?.reset();
+    if (state.error) toast.error(state.error);
+    if (state.success) {
+      toast.success(state.success);
+      if (mode === "create") formRef.current?.reset();
     }
-  }, [state.success, mode]);
+  }, [state, mode]);
 
   return (
-    <form ref={formRef} action={formAction} className={styles.form}>
+    <form ref={formRef} action={formAction} className="flex flex-col gap-4">
       {mode === "edit" && property ? (
         <input type="hidden" name="id" value={property.id} />
       ) : null}
 
-      {state.error ? <div className={styles.formError}>{state.error}</div> : null}
-      {state.success ? (
-        <div className={styles.formSuccess}>{state.success}</div>
-      ) : null}
-
-      <div className={styles.field}>
-        <label htmlFor={`${mode}-name`} className={styles.label}>
-          Name des Objekts
-        </label>
-        <input
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={`${mode}-name`}>Name des Objekts</Label>
+        <Input
           id={`${mode}-name`}
           name="name"
-          type="text"
           required
           defaultValue={property?.name ?? ""}
-          className={styles.input}
           placeholder="z. B. MFH Schützenstraße 12"
         />
       </div>
 
-      <div className={styles.formRow}>
-        <div className={`${styles.field} ${styles.grow}`}>
-          <label htmlFor={`${mode}-street`} className={styles.label}>
-            Straße
-          </label>
-          <input
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="flex flex-col gap-1.5 sm:col-span-2">
+          <Label htmlFor={`${mode}-street`}>Straße</Label>
+          <Input
             id={`${mode}-street`}
             name="street"
-            type="text"
             required
             defaultValue={property?.street ?? ""}
-            className={styles.input}
           />
         </div>
-        <div className={styles.field}>
-          <label htmlFor={`${mode}-house_number`} className={styles.label}>
-            Hausnummer
-          </label>
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${mode}-house_number`}>Hausnummer</Label>
+          <Input
             id={`${mode}-house_number`}
             name="house_number"
-            type="text"
             required
             defaultValue={property?.house_number ?? ""}
-            className={styles.input}
           />
         </div>
       </div>
 
-      <div className={styles.formRow}>
-        <div className={styles.field}>
-          <label htmlFor={`${mode}-zip`} className={styles.label}>
-            PLZ
-          </label>
-          <input
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${mode}-zip`}>PLZ</Label>
+          <Input
             id={`${mode}-zip`}
             name="zip"
-            type="text"
             inputMode="numeric"
             required
             pattern="[0-9]{5}"
             maxLength={5}
             defaultValue={property?.zip ?? ""}
-            className={styles.input}
             placeholder="12345"
           />
         </div>
-        <div className={`${styles.field} ${styles.grow}`}>
-          <label htmlFor={`${mode}-city`} className={styles.label}>
-            Ort
-          </label>
-          <input
+        <div className="flex flex-col gap-1.5 sm:col-span-2">
+          <Label htmlFor={`${mode}-city`}>Ort</Label>
+          <Input
             id={`${mode}-city`}
             name="city"
-            type="text"
             required
             defaultValue={property?.city ?? ""}
-            className={styles.input}
           />
         </div>
       </div>
 
-      <div className={styles.formRow}>
-        <div className={styles.field}>
-          <label htmlFor={`${mode}-build_year`} className={styles.label}>
-            Baujahr (optional)
-          </label>
-          <input
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${mode}-build_year`}>Baujahr (optional)</Label>
+          <Input
             id={`${mode}-build_year`}
             name="build_year"
             type="number"
@@ -150,43 +125,40 @@ export function PropertyForm({
             max="2100"
             step="1"
             defaultValue={property?.build_year ?? ""}
-            className={styles.input}
             placeholder="z. B. 1998"
           />
         </div>
-        <div className={styles.field}>
-          <label htmlFor={`${mode}-total_living_area`} className={styles.label}>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${mode}-total_living_area`}>
             Wohnfläche gesamt in m² (optional)
-          </label>
-          <input
+          </Label>
+          <Input
             id={`${mode}-total_living_area`}
             name="total_living_area"
             type="number"
             min="0"
             step="0.01"
             defaultValue={property?.total_living_area ?? ""}
-            className={styles.input}
             placeholder="z. B. 420,50"
           />
         </div>
       </div>
 
-      <div className={styles.field}>
-        <label htmlFor={`${mode}-notes`} className={styles.label}>
-          Notizen (optional)
-        </label>
-        <textarea
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={`${mode}-notes`}>Notizen (optional)</Label>
+        <Textarea
           id={`${mode}-notes`}
           name="notes"
           rows={2}
           defaultValue={property?.notes ?? ""}
-          className={styles.textarea}
         />
       </div>
 
-      <SubmitButton
-        label={mode === "create" ? "Objekt anlegen" : "Änderungen speichern"}
-      />
+      <div>
+        <SubmitButton
+          label={mode === "create" ? "Objekt anlegen" : "Änderungen speichern"}
+        />
+      </div>
     </form>
   );
 }

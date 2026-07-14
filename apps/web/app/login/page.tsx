@@ -1,76 +1,86 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
-import { login, type AuthState } from "../actions";
-import styles from "../auth.module.css";
+import { toast } from "sonner";
+import { login, type AuthState } from "@/app/actions";
+import { AuthShell } from "@/components/auth-shell";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const initialState: AuthState = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className={styles.button} disabled={pending}>
+    <Button type="submit" className="w-full" disabled={pending}>
       {pending ? "Anmelden …" : "Anmelden"}
-    </button>
+    </Button>
   );
 }
 
 export default function LoginPage() {
   const [state, formAction] = useActionState(login, initialState);
 
+  useEffect(() => {
+    if (state.error) toast.error(state.error);
+  }, [state]);
+
   return (
-    <div className={styles.container}>
-      <div className={styles.card}>
-        <h1 className={styles.title}>Anmelden</h1>
-        <p className={styles.subtitle}>
-          Willkommen zurück. Bitte melde dich mit deinem Konto an.
-        </p>
-
-        <form action={formAction} className={styles.form}>
-          {state.error ? <div className={styles.error}>{state.error}</div> : null}
-
-          <div className={styles.field}>
-            <label htmlFor="email" className={styles.label}>
-              E-Mail-Adresse
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              className={styles.input}
-              placeholder="name@beispiel.de"
-            />
-          </div>
-
-          <div className={styles.field}>
-            <label htmlFor="password" className={styles.label}>
-              Passwort
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              className={styles.input}
-              placeholder="••••••••"
-            />
-          </div>
-
-          <SubmitButton />
-        </form>
-
-        <p className={styles.footer}>
-          Noch kein Konto?{" "}
-          <Link href="/registrieren" className={styles.link}>
-            Jetzt registrieren
-          </Link>
-        </p>
-      </div>
-    </div>
+    <AuthShell>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Willkommen zurück</CardTitle>
+          <CardDescription>
+            Melde dich mit deinem Konto an.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form action={formAction} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="email">E-Mail-Adresse</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                placeholder="name@beispiel.de"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="password">Passwort</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                placeholder="••••••••"
+              />
+            </div>
+            <SubmitButton />
+          </form>
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            Noch kein Konto?{" "}
+            <Link
+              href="/registrieren"
+              className="font-medium text-primary hover:underline"
+            >
+              Jetzt registrieren
+            </Link>
+          </p>
+        </CardContent>
+      </Card>
+    </AuthShell>
   );
 }

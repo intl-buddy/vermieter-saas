@@ -1,10 +1,29 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { toast } from "sonner";
 import { createDunning, type DunningState } from "../../dunningActions";
-import { formatCurrency, formatMonth } from "../../../../lib/format";
-import styles from "../detail.module.css";
+import { formatCurrency, formatMonth } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const initialState: DunningState = {};
 
@@ -27,9 +46,9 @@ function parseFee(raw: string): number {
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className={styles.submit} disabled={pending}>
+    <Button type="submit" disabled={pending}>
       {pending ? "Mahnung wird erzeugt …" : "Mahnung erzeugen"}
-    </button>
+    </Button>
   );
 }
 
@@ -54,6 +73,10 @@ export function MahnungPreviewForm({
     suggestedLevel === 1 ? "0" : String(dunningFee),
   );
 
+  useEffect(() => {
+    if (state.error) toast.error(state.error);
+  }, [state]);
+
   const openTotal = charges.reduce((sum, c) => sum + c.openAmount, 0);
   const total = openTotal + parseFee(feeStr);
 
@@ -64,110 +87,114 @@ export function MahnungPreviewForm({
   }
 
   return (
-    <form action={formAction} className={styles.form}>
+    <form action={formAction} className="flex flex-col gap-6">
       <input type="hidden" name="tenant_id" value={tenantId} />
 
-      {state.error ? <div className={styles.formError}>{state.error}</div> : null}
-      {hint ? <div className={styles.warn}>{hint}</div> : null}
-
-      <div className={styles.formRow}>
-        <div className={styles.field}>
-          <label htmlFor="level" className={styles.label}>
-            Mahnstufe
-          </label>
-          <select
-            id="level"
-            name="level"
-            value={level}
-            onChange={(e) => onLevelChange(Number(e.target.value))}
-            className={styles.input}
-          >
-            <option value={1}>Stufe 1 – Zahlungserinnerung</option>
-            <option value={2}>Stufe 2 – Mahnung</option>
-            <option value={3}>Stufe 3 – Letzte Mahnung</option>
-          </select>
+      {hint ? (
+        <div className="rounded-xl border border-warning-100 bg-warning-50 px-4 py-3 text-sm text-warning-700">
+          {hint}
         </div>
+      ) : null}
 
-        <div className={styles.field}>
-          <label htmlFor="fee" className={styles.label}>
-            Mahngebühr (€)
-          </label>
-          <input
-            id="fee"
-            name="fee"
-            type="number"
-            min="0"
-            step="0.01"
-            value={feeStr}
-            onChange={(e) => setFeeStr(e.target.value)}
-            className={styles.input}
-          />
-        </div>
+      <Card>
+        <CardContent className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="level">Mahnstufe</Label>
+            <Select
+              name="level"
+              value={String(level)}
+              onValueChange={(v) => onLevelChange(Number(v))}
+            >
+              <SelectTrigger id="level">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">Stufe 1 – Zahlungserinnerung</SelectItem>
+                <SelectItem value="2">Stufe 2 – Mahnung</SelectItem>
+                <SelectItem value="3">Stufe 3 – Letzte Mahnung</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className={styles.field}>
-          <label htmlFor="payment_deadline" className={styles.label}>
-            Zahlungsfrist
-          </label>
-          <input
-            id="payment_deadline"
-            name="payment_deadline"
-            type="date"
-            required
-            defaultValue={defaultDeadline}
-            className={styles.input}
-          />
-        </div>
-      </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="fee">Mahngebühr (€)</Label>
+            <Input
+              id="fee"
+              name="fee"
+              type="number"
+              min="0"
+              step="0.01"
+              value={feeStr}
+              onChange={(e) => setFeeStr(e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="payment_deadline">Zahlungsfrist</Label>
+            <Input
+              id="payment_deadline"
+              name="payment_deadline"
+              type="date"
+              required
+              defaultValue={defaultDeadline}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <div>
-        <h2 className={styles.sectionTitle}>Offene Monate</h2>
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.thLeft}>Monat</th>
-                <th className={styles.thRight}>Sollbetrag</th>
-                <th className={styles.thRight}>Offener Betrag</th>
-              </tr>
-            </thead>
-            <tbody>
+        <h2 className="mb-3 text-lg font-semibold">Offene Monate</h2>
+        <Card className="overflow-hidden p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Monat</TableHead>
+                <TableHead className="text-right">Sollbetrag</TableHead>
+                <TableHead className="text-right">Offener Betrag</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {charges.map((c) => (
-                <tr key={c.period}>
-                  <td className={styles.tdLeft}>{formatMonth(c.period)}</td>
-                  <td className={styles.tdRight}>
+                <TableRow key={c.period}>
+                  <TableCell>{formatMonth(c.period)}</TableCell>
+                  <TableCell className="text-right tabular-nums">
                     {formatCurrency(c.totalAmount)}
-                  </td>
-                  <td className={`${styles.tdRight} ${styles.open}`}>
+                  </TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums text-danger-600">
                     {formatCurrency(c.openAmount)}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </Card>
       </div>
 
-      <div className={styles.summaryBox}>
-        <div className={styles.summaryRow}>
-          <span>Summe offener Mieten</span>
-          <span>{formatCurrency(openTotal)}</span>
-        </div>
-        <div className={styles.summaryRow}>
-          <span>Mahngebühr</span>
-          <span>{formatCurrency(parseFee(feeStr))}</span>
-        </div>
-        <div className={`${styles.summaryRow} ${styles.summaryTotal}`}>
-          <span>Zahlbetrag gesamt</span>
-          <span>{formatCurrency(total)}</span>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="flex flex-col gap-2 p-6">
+          <div className="flex items-center justify-between text-sm tabular-nums">
+            <span className="text-muted-foreground">Summe offener Mieten</span>
+            <span>{formatCurrency(openTotal)}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm tabular-nums">
+            <span className="text-muted-foreground">Mahngebühr</span>
+            <span>{formatCurrency(parseFee(feeStr))}</span>
+          </div>
+          <div className="mt-1 flex items-center justify-between border-t border-neutral-200 pt-3 text-base font-bold tabular-nums">
+            <span>Zahlbetrag gesamt</span>
+            <span>{formatCurrency(total)}</span>
+          </div>
+        </CardContent>
+      </Card>
 
-      <p className={styles.note}>
+      <p className="text-sm text-muted-foreground">
         Bei Bestätigung wird das PDF erzeugt, im privaten Bucket „dunning"
         gespeichert und die Mahnung als Entwurf angelegt.
       </p>
 
-      <SubmitButton />
+      <div>
+        <SubmitButton />
+      </div>
     </form>
   );
 }

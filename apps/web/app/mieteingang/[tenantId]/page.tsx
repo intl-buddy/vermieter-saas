@@ -1,19 +1,27 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import type { Database } from "@repo/core";
-import { createClient } from "../../../lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+import { formatCurrency, formatDate, formatMonth } from "@/lib/format";
+import { AppShell } from "@/components/app-shell";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-  formatCurrency,
-  formatDate,
-  formatMonth,
-} from "../../../lib/format";
-import { SiteHeader } from "../../components/SiteHeader";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { PaymentForm } from "./PaymentForm";
 import { MarkSentButton } from "./MarkSentButton";
-import styles from "./detail.module.css";
 
 type PayerType = Database["public"]["Enums"]["payer_type"];
 type DunningStatus = Database["public"]["Enums"]["dunning_status"];
+type BadgeVariant = React.ComponentProps<typeof Badge>["variant"];
 
 const PAYER_LABELS: Record<PayerType, string> = {
   tenant: "Mieter",
@@ -23,18 +31,21 @@ const PAYER_LABELS: Record<PayerType, string> = {
 
 const DUNNING_STATUS: Record<
   DunningStatus,
-  { label: string; className: string }
+  { label: string; variant: BadgeVariant }
 > = {
-  draft: { label: "Entwurf", className: "statusDraft" },
-  sent: { label: "Versendet", className: "statusSent" },
-  resolved: { label: "Erledigt", className: "statusResolved" },
-  obsolete: { label: "Gegenstandslos", className: "statusObsolete" },
+  draft: { label: "Entwurf", variant: "neutral" },
+  sent: { label: "Versendet", variant: "success" },
+  resolved: { label: "Erledigt", variant: "neutral" },
+  obsolete: { label: "Gegenstandslos", variant: "outline" },
 };
 
-const DUNNING_LEVEL_LABELS: Record<number, string> = {
-  1: "Stufe 1 – Zahlungserinnerung",
-  2: "Stufe 2 – Mahnung",
-  3: "Stufe 3 – Letzte Mahnung",
+const DUNNING_LEVEL: Record<
+  number,
+  { label: string; variant: BadgeVariant }
+> = {
+  1: { label: "Stufe 1 – Zahlungserinnerung", variant: "warning" },
+  2: { label: "Stufe 2 – Mahnung", variant: "orange" },
+  3: { label: "Stufe 3 – Letzte Mahnung", variant: "danger" },
 };
 
 export default async function MieteingangDetailPage({
@@ -114,221 +125,238 @@ export default async function MieteingangDetailPage({
   );
 
   return (
-    <div className={styles.container}>
-      <SiteHeader />
+    <AppShell title="Mieteingang" userEmail={user.email ?? ""}>
+      <Button asChild variant="ghost" size="sm" className="-ml-2 mb-3">
+        <Link href="/mieteingang">
+          <ArrowLeft className="size-4" />
+          Zurück zur Übersicht
+        </Link>
+      </Button>
 
-      <main className={styles.main}>
-        <div className={styles.breadcrumb}>
-          <Link href="/mieteingang" className={styles.backLink}>
-            ← Zurück zur Übersicht
-          </Link>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            {tenantName}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Offene Monate, Zahlungshistorie und Zahlungserfassung.
+          </p>
         </div>
-
-        <div className={styles.headRow}>
-          <div>
-            <h1 className={styles.title}>{tenantName}</h1>
-            <p className={styles.subtitle}>
-              Offene Monate, Zahlungshistorie und Zahlungserfassung.
-            </p>
-          </div>
-          {totalOpen > 0 ? (
-            <Link
-              href={`/mieteingang/${tenantId}/mahnung`}
-              className={styles.dunningButton}
-            >
+        {totalOpen > 0 ? (
+          <Button asChild variant="destructive">
+            <Link href={`/mieteingang/${tenantId}/mahnung`}>
               Mahnung erstellen
             </Link>
+          </Button>
+        ) : null}
+      </div>
+
+      {/* (a) Offene Monate */}
+      <section className="mb-8">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">Offene Monate</h2>
+          {openCharges && openCharges.length > 0 ? (
+            <Badge variant="danger">
+              Offener Rest gesamt: {formatCurrency(totalOpen)}
+            </Badge>
           ) : null}
         </div>
 
-        {/* (a) Offene Monate */}
-        <section className={styles.section}>
-          <div className={styles.sectionHead}>
-            <h2 className={styles.sectionTitle}>Offene Monate</h2>
-            {openCharges && openCharges.length > 0 ? (
-              <span className={styles.pill}>
-                Offener Rest gesamt: {formatCurrency(totalOpen)}
-              </span>
-            ) : null}
-          </div>
-
-          {chargesError ? (
-            <div className={styles.error}>
+        {chargesError ? (
+          <Card>
+            <CardContent className="p-6 text-sm text-danger-700">
               Die offenen Monate konnten nicht geladen werden:{" "}
               {chargesError.message}
-            </div>
-          ) : !openCharges || openCharges.length === 0 ? (
-            <div className={styles.empty}>Keine offenen Monate. 🎉</div>
-          ) : (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th className={styles.thLeft}>Monat</th>
-                    <th className={styles.thLeft}>Fälligkeit</th>
-                    <th className={styles.thRight}>Betrag</th>
-                    <th className={styles.thRight}>Offener Rest</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {openCharges.map((charge) => (
-                    <tr key={charge.charge_id}>
-                      <td className={styles.tdLeft}>
-                        {formatMonth(charge.period)}
-                      </td>
-                      <td className={styles.tdLeft}>
-                        {formatDate(charge.due_date)}
-                      </td>
-                      <td className={styles.tdRight}>
-                        {formatCurrency(charge.total_amount)}
-                      </td>
-                      <td className={`${styles.tdRight} ${styles.open}`}>
-                        {formatCurrency(charge.open_amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+            </CardContent>
+          </Card>
+        ) : !openCharges || openCharges.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center text-sm text-muted-foreground">
+              Keine offenen Monate. 🎉
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="overflow-hidden p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Monat</TableHead>
+                  <TableHead>Fälligkeit</TableHead>
+                  <TableHead className="text-right">Betrag</TableHead>
+                  <TableHead className="text-right">Offener Rest</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {openCharges.map((charge) => (
+                  <TableRow key={charge.charge_id}>
+                    <TableCell>{formatMonth(charge.period)}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(charge.due_date)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatCurrency(charge.total_amount)}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums text-danger-600">
+                      {formatCurrency(charge.open_amount)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        )}
+      </section>
 
-        {/* (b) Zahlungshistorie */}
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Zahlungshistorie</h2>
+      {/* (b) Zahlungshistorie */}
+      <section className="mb-8">
+        <h2 className="mb-3 text-lg font-semibold">Zahlungshistorie</h2>
 
-          {paymentsError ? (
-            <div className={styles.error}>
+        {paymentsError ? (
+          <Card>
+            <CardContent className="p-6 text-sm text-danger-700">
               Die Zahlungshistorie konnte nicht geladen werden:{" "}
               {paymentsError.message}
-            </div>
-          ) : !payments || payments.length === 0 ? (
-            <div className={styles.empty}>
+            </CardContent>
+          </Card>
+        ) : !payments || payments.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center text-sm text-muted-foreground">
               Es wurden noch keine Zahlungen erfasst.
-            </div>
-          ) : (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th className={styles.thLeft}>Wertstellung</th>
-                    <th className={styles.thRight}>Betrag</th>
-                    <th className={styles.thLeft}>Zahler</th>
-                    <th className={styles.thLeft}>Verwendungszweck</th>
-                    <th className={styles.thLeft}>Notiz</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payments.map((payment) => (
-                    <tr key={payment.id}>
-                      <td className={styles.tdLeft}>
-                        {formatDate(payment.paid_at)}
-                      </td>
-                      <td
-                        className={`${styles.tdRight} ${
-                          payment.amount < 0 ? styles.open : styles.paid
-                        }`}
-                      >
-                        {formatCurrency(payment.amount)}
-                      </td>
-                      <td className={styles.tdLeft}>
-                        {PAYER_LABELS[payment.payer] ?? payment.payer}
-                      </td>
-                      <td className={styles.tdLeft}>
-                        {payment.bank_reference || "–"}
-                      </td>
-                      <td className={styles.tdLeft}>{payment.notes || "–"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="overflow-hidden p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Wertstellung</TableHead>
+                  <TableHead className="text-right">Betrag</TableHead>
+                  <TableHead>Zahler</TableHead>
+                  <TableHead>Verwendungszweck</TableHead>
+                  <TableHead>Notiz</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payments.map((payment) => (
+                  <TableRow key={payment.id}>
+                    <TableCell>{formatDate(payment.paid_at)}</TableCell>
+                    <TableCell
+                      className={`text-right font-semibold tabular-nums ${
+                        payment.amount < 0
+                          ? "text-danger-600"
+                          : "text-success-700"
+                      }`}
+                    >
+                      {formatCurrency(payment.amount)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {PAYER_LABELS[payment.payer] ?? payment.payer}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {payment.bank_reference || "–"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {payment.notes || "–"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        )}
+      </section>
 
-        {/* (c) Mahnhistorie */}
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Mahnhistorie</h2>
+      {/* (c) Mahnhistorie */}
+      <section className="mb-8">
+        <h2 className="mb-3 text-lg font-semibold">Mahnhistorie</h2>
 
-          {dunningError ? (
-            <div className={styles.error}>
+        {dunningError ? (
+          <Card>
+            <CardContent className="p-6 text-sm text-danger-700">
               Die Mahnhistorie konnte nicht geladen werden: {dunningError.message}
-            </div>
-          ) : !dunningLetters || dunningLetters.length === 0 ? (
-            <div className={styles.empty}>
+            </CardContent>
+          </Card>
+        ) : !dunningLetters || dunningLetters.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center text-sm text-muted-foreground">
               Es wurden noch keine Mahnungen erstellt.
-            </div>
-          ) : (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th className={styles.thLeft}>Stufe</th>
-                    <th className={styles.thLeft}>Datum</th>
-                    <th className={styles.thRight}>Betrag</th>
-                    <th className={styles.thLeft}>Status</th>
-                    <th className={styles.thLeft}>Aktionen</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dunningLetters.map((letter) => {
-                    const status = DUNNING_STATUS[letter.status];
-                    return (
-                      <tr key={letter.id}>
-                        <td className={styles.tdLeft}>
-                          {DUNNING_LEVEL_LABELS[letter.level] ??
-                            `Stufe ${letter.level}`}
-                        </td>
-                        <td className={styles.tdLeft}>
-                          {formatDate(letter.issued_at)}
-                        </td>
-                        <td className={styles.tdRight}>
-                          {formatCurrency(letter.amount_due + letter.fee)}
-                        </td>
-                        <td className={styles.tdLeft}>
-                          <span
-                            className={`${styles.statusBadge} ${
-                              styles[status.className]
-                            }`}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="overflow-hidden p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Stufe</TableHead>
+                  <TableHead>Datum</TableHead>
+                  <TableHead className="text-right">Betrag</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Aktionen</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dunningLetters.map((letter) => {
+                  const status = DUNNING_STATUS[letter.status];
+                  const level = DUNNING_LEVEL[letter.level] ?? {
+                    label: `Stufe ${letter.level}`,
+                    variant: "neutral" as BadgeVariant,
+                  };
+                  return (
+                    <TableRow key={letter.id}>
+                      <TableCell>
+                        <Badge variant={level.variant}>{level.label}</Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(letter.issued_at)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatCurrency(letter.amount_due + letter.fee)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={status.variant}>{status.label}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            asChild
+                            variant="link"
+                            size="sm"
+                            className="h-auto p-0"
                           >
-                            {status.label}
-                          </span>
-                        </td>
-                        <td className={styles.tdLeft}>
-                          <div className={styles.historyActions}>
                             <a
                               href={downloadUrls.get(letter.id)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className={styles.linkBtn}
                             >
                               PDF
                             </a>
-                            {letter.status === "draft" ? (
-                              <MarkSentButton
-                                dunningId={letter.id}
-                                tenantId={tenantId}
-                              />
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+                          </Button>
+                          {letter.status === "draft" ? (
+                            <MarkSentButton
+                              dunningId={letter.id}
+                              tenantId={tenantId}
+                            />
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </Card>
+        )}
+      </section>
 
-        {/* (d) Zahlung erfassen */}
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Zahlung erfassen</h2>
-          <div className={styles.formCard}>
+      {/* (d) Zahlung erfassen */}
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Zahlung erfassen</h2>
+        <Card>
+          <CardContent className="p-6">
             <PaymentForm tenantId={tenantId} />
-          </div>
-        </section>
-      </main>
-    </div>
+          </CardContent>
+        </Card>
+      </section>
+    </AppShell>
   );
 }
