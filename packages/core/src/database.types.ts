@@ -235,6 +235,7 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          rent_iban: string | null
           street: string
           total_living_area: number | null
           updated_at: string
@@ -250,6 +251,7 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          rent_iban?: string | null
           street: string
           total_living_area?: number | null
           updated_at?: string
@@ -265,6 +267,7 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          rent_iban?: string | null
           street?: string
           total_living_area?: number | null
           updated_at?: string
@@ -615,8 +618,12 @@ export type Database = {
           address_city: string | null
           address_street: string | null
           address_zip: string | null
+          bank_name: string | null
+          bic: string | null
           company_name: string | null
           created_at: string
+          dunning_deadline_days: number
+          dunning_fee: number
           email: string
           full_name: string
           iban: string | null
@@ -632,8 +639,12 @@ export type Database = {
           address_city?: string | null
           address_street?: string | null
           address_zip?: string | null
+          bank_name?: string | null
+          bic?: string | null
           company_name?: string | null
           created_at?: string
+          dunning_deadline_days?: number
+          dunning_fee?: number
           email: string
           full_name: string
           iban?: string | null
@@ -649,8 +660,12 @@ export type Database = {
           address_city?: string | null
           address_street?: string | null
           address_zip?: string | null
+          bank_name?: string | null
+          bic?: string | null
           company_name?: string | null
           created_at?: string
+          dunning_deadline_days?: number
+          dunning_fee?: number
           email?: string
           full_name?: string
           iban?: string | null

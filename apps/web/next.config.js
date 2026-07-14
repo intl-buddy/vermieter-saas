@@ -10,6 +10,9 @@ const nextConfig = {
   // In a monorepo the file tracing root must point at the repo root so the
   // standalone output includes the workspace packages and their node_modules.
   outputFileTracingRoot: path.join(__dirname, "../../"),
+  // @react-pdf/renderer nutzt Node-interne Module und wird zur Laufzeit aus
+  // node_modules aufgelöst statt in den Server-Bundle gepackt.
+  serverExternalPackages: ["@react-pdf/renderer"],
 };
 
 export default nextConfig;

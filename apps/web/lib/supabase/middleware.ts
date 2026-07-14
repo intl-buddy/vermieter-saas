@@ -6,7 +6,13 @@ import { NextResponse, type NextRequest } from "next/server";
  * schützt geschützte Bereiche. Nicht eingeloggte Besucher der geschützten
  * Pfade werden auf `/login` umgeleitet.
  */
-const PROTECTED_PREFIXES = ["/dashboard", "/objekte", "/mieteingang"];
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/objekte",
+  "/mieteingang",
+  "/einstellungen",
+  "/mahnungen",
+];
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
