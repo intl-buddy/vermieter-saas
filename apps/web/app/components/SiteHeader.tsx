@@ -7,6 +7,7 @@ import styles from "./site-header.module.css";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/objekte", label: "Objekte" },
   { href: "/mieteingang", label: "Mieteingang" },
 ];
 
