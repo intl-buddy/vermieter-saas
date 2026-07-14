@@ -3,9 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Aktualisiert bei jedem Request die Supabase-Session (Token-Refresh) und
- * schützt geschützte Bereiche. Nicht eingeloggte Besucher von `/dashboard`
- * werden auf `/login` umgeleitet.
+ * schützt geschützte Bereiche. Nicht eingeloggte Besucher der geschützten
+ * Pfade werden auf `/login` umgeleitet.
  */
+const PROTECTED_PREFIXES = ["/dashboard", "/mieteingang"];
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -40,7 +41,10 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Geschützte Bereiche: ohne Session → /login
-  if (!user && pathname.startsWith("/dashboard")) {
+  const isProtected = PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+  if (!user && isProtected) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

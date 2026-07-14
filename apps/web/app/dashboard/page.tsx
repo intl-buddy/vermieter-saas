@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "../../lib/supabase/server";
-import { logout } from "../actions";
+import { SiteHeader } from "../components/SiteHeader";
 import styles from "./dashboard.module.css";
 
 export default async function DashboardPage() {
@@ -16,14 +16,7 @@ export default async function DashboardPage() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <span className={styles.brand}>Vermieter&nbsp;SaaS</span>
-        <form action={logout}>
-          <button type="submit" className={styles.logout}>
-            Abmelden
-          </button>
-        </form>
-      </header>
+      <SiteHeader />
 
       <main className={styles.main}>
         <h1 className={styles.title}>Willkommen, {user.email}</h1>

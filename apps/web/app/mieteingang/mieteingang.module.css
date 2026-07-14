@@ -1,0 +1,137 @@
+.container {
+  min-height: 100dvh;
+  background: #f5f5f7;
+}
+
+.main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 24px 64px;
+}
+
+.headline {
+  margin-bottom: 24px;
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 600;
+  color: #111;
+}
+
+.subtitle {
+  margin: 0;
+  max-width: 640px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #555;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.thLeft,
+.thRight {
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: #fafafa;
+  border-bottom: 1px solid #e5e5ea;
+}
+
+.thLeft {
+  text-align: left;
+}
+
+.thRight {
+  text-align: right;
+}
+
+.row {
+  position: relative;
+  transition: background 0.12s ease;
+}
+
+.row:hover {
+  background: #f5f9ff;
+}
+
+.row:not(:last-child) .tdLeft,
+.row:not(:last-child) .tdRight {
+  border-bottom: 1px solid #f0f0f2;
+}
+
+.tdLeft,
+.tdRight {
+  padding: 14px 16px;
+  color: #111;
+}
+
+.tdLeft {
+  text-align: left;
+  font-weight: 500;
+}
+
+.tdRight {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stretched-Link: macht die gesamte Zeile klickbar. */
+.rowLink {
+  color: #111;
+  font-weight: 500;
+}
+
+.rowLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.rowLink:hover {
+  color: #0070f3;
+}
+
+.arrears {
+  color: #b00020;
+  font-weight: 600;
+}
+
+.settled {
+  color: #05603a;
+}
+
+.error {
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #b00020;
+  background: #fdecef;
+  border: 1px solid #f5c2cb;
+  border-radius: 12px;
+}
+
+.empty {
+  padding: 40px 24px;
+  text-align: center;
+  font-size: 15px;
+  color: #666;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-radius: 12px;
+}
