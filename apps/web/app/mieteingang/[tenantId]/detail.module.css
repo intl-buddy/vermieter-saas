@@ -255,3 +255,133 @@
   border: 1px solid #a6f4c5;
   border-radius: 8px;
 }
+
+/* ---------- Mahnlauf ---------- */
+.warn {
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #8a5a00;
+  background: #fff7e6;
+  border: 1px solid #ffe1a6;
+  border-radius: 8px;
+}
+
+.note {
+  margin: 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.summaryBox {
+  padding: 14px 16px;
+  background: #f7faff;
+  border: 1px solid #d9e7ff;
+  border-radius: 10px;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryTotal {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid #cfe0ff;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* Aktionsschaltfläche „Mahnung erstellen" (Link im Button-Look) */
+.dunningButton {
+  display: inline-block;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: #b00020;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.dunningButton:hover {
+  background: #90001a;
+}
+
+.linkBtn {
+  font-size: 14px;
+  font-weight: 500;
+  color: #0070f3;
+}
+
+.linkBtn:hover {
+  text-decoration: underline;
+}
+
+.markSentBtn {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  background: #f5f5f7;
+  border: 1px solid #d1d1d6;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.markSentBtn:hover {
+  background: #e8e8ed;
+}
+
+.historyActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+}
+
+.statusDraft {
+  color: #8a5a00;
+  background: #fff7e6;
+  border: 1px solid #ffe1a6;
+}
+
+.statusSent {
+  color: #05603a;
+  background: #ecfdf3;
+  border: 1px solid #a6f4c5;
+}
+
+.statusResolved {
+  color: #3a3a3c;
+  background: #f0f0f2;
+  border: 1px solid #e0e0e5;
+}
+
+.statusObsolete {
+  color: #777;
+  background: #f7f7f8;
+  border: 1px solid #e5e5ea;
+}
+
+.headRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
