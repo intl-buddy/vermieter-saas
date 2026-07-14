@@ -31,7 +31,7 @@ export default async function MieteingangPage() {
 
   const { data: balances, error } = await supabase
     .from("tenant_balances")
-    .select("tenant_id, first_name, last_name, total_charged, total_paid, balance")
+    .select("tenant_id, first_name, last_name, total_due, total_paid, balance")
     .order("balance", { ascending: false });
 
   return (
@@ -80,7 +80,7 @@ export default async function MieteingangPage() {
                         </Link>
                       </td>
                       <td className={styles.tdRight}>
-                        {formatCurrency(row.total_charged)}
+                        {formatCurrency(row.total_due)}
                       </td>
                       <td className={styles.tdRight}>
                         {formatCurrency(row.total_paid)}

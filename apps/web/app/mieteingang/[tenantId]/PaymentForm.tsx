@@ -55,20 +55,19 @@ export function PaymentForm({ tenantId }: { tenantId: string }) {
             type="number"
             inputMode="decimal"
             step="0.01"
-            min="0"
             required
             className={styles.input}
-            placeholder="z. B. 750,00"
+            placeholder="z. B. 750,00 (negativ = Rückbuchung)"
           />
         </div>
 
         <div className={styles.field}>
-          <label htmlFor="value_date" className={styles.label}>
+          <label htmlFor="paid_at" className={styles.label}>
             Wertstellungsdatum
           </label>
           <input
-            id="value_date"
-            name="value_date"
+            id="paid_at"
+            name="paid_at"
             type="date"
             required
             defaultValue={todayIso()}
@@ -94,12 +93,12 @@ export function PaymentForm({ tenantId }: { tenantId: string }) {
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="purpose" className={styles.label}>
+        <label htmlFor="bank_reference" className={styles.label}>
           Verwendungszweck
         </label>
         <input
-          id="purpose"
-          name="purpose"
+          id="bank_reference"
+          name="bank_reference"
           type="text"
           className={styles.input}
           placeholder="z. B. Miete Juli 2026"
@@ -107,12 +106,12 @@ export function PaymentForm({ tenantId }: { tenantId: string }) {
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="note" className={styles.label}>
+        <label htmlFor="notes" className={styles.label}>
           Notiz
         </label>
         <textarea
-          id="note"
-          name="note"
+          id="notes"
+          name="notes"
           rows={2}
           className={styles.textarea}
           placeholder="Interne Anmerkung (optional)"

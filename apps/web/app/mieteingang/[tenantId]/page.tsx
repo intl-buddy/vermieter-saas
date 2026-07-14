@@ -11,9 +11,9 @@ import { SiteHeader } from "../../components/SiteHeader";
 import { PaymentForm } from "./PaymentForm";
 import styles from "./detail.module.css";
 
-type RentPayer = Database["public"]["Enums"]["rent_payer"];
+type PayerType = Database["public"]["Enums"]["payer_type"];
 
-const PAYER_LABELS: Record<RentPayer, string> = {
+const PAYER_LABELS: Record<PayerType, string> = {
   tenant: "Mieter",
   jobcenter: "Jobcenter",
   other: "Sonstige",
@@ -56,9 +56,9 @@ export default async function MieteingangDetailPage({
       supabase.rpc("open_charges", { p_tenant_id: tenantId }),
       supabase
         .from("rent_payments")
-        .select("id, amount, value_date, payer, purpose, note, created_at")
+        .select("id, amount, paid_at, payer, bank_reference, notes, created_at")
         .eq("tenant_id", tenantId)
-        .order("value_date", { ascending: false })
+        .order("paid_at", { ascending: false })
         .order("created_at", { ascending: false }),
     ]);
 
@@ -116,13 +116,13 @@ export default async function MieteingangDetailPage({
                   {openCharges.map((charge) => (
                     <tr key={charge.charge_id}>
                       <td className={styles.tdLeft}>
-                        {formatMonth(charge.period_month)}
+                        {formatMonth(charge.period)}
                       </td>
                       <td className={styles.tdLeft}>
                         {formatDate(charge.due_date)}
                       </td>
                       <td className={styles.tdRight}>
-                        {formatCurrency(charge.amount)}
+                        {formatCurrency(charge.total_amount)}
                       </td>
                       <td className={`${styles.tdRight} ${styles.open}`}>
                         {formatCurrency(charge.open_amount)}
@@ -164,16 +164,22 @@ export default async function MieteingangDetailPage({
                   {payments.map((payment) => (
                     <tr key={payment.id}>
                       <td className={styles.tdLeft}>
-                        {formatDate(payment.value_date)}
+                        {formatDate(payment.paid_at)}
                       </td>
-                      <td className={`${styles.tdRight} ${styles.paid}`}>
+                      <td
+                        className={`${styles.tdRight} ${
+                          payment.amount < 0 ? styles.open : styles.paid
+                        }`}
+                      >
                         {formatCurrency(payment.amount)}
                       </td>
                       <td className={styles.tdLeft}>
                         {PAYER_LABELS[payment.payer] ?? payment.payer}
                       </td>
-                      <td className={styles.tdLeft}>{payment.purpose || "–"}</td>
-                      <td className={styles.tdLeft}>{payment.note || "–"}</td>
+                      <td className={styles.tdLeft}>
+                        {payment.bank_reference || "–"}
+                      </td>
+                      <td className={styles.tdLeft}>{payment.notes || "–"}</td>
                     </tr>
                   ))}
                 </tbody>

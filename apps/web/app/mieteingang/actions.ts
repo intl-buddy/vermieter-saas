@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import type { Database } from "@repo/core";
 import { createClient } from "../../lib/supabase/server";
 
-type RentPayer = Database["public"]["Enums"]["rent_payer"];
+type PayerType = Database["public"]["Enums"]["payer_type"];
 
-const PAYERS: readonly RentPayer[] = ["tenant", "jobcenter", "other"];
+const PAYERS: readonly PayerType[] = ["tenant", "jobcenter", "other"];
 
 export type PaymentState = {
   error?: string;
@@ -36,25 +36,26 @@ export async function recordPayment(
 ): Promise<PaymentState> {
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const amountRaw = String(formData.get("amount") ?? "").trim();
-  const valueDate = String(formData.get("value_date") ?? "").trim();
+  const paidAt = String(formData.get("paid_at") ?? "").trim();
   const payerRaw = String(formData.get("payer") ?? "").trim();
-  const purpose = String(formData.get("purpose") ?? "").trim();
-  const note = String(formData.get("note") ?? "").trim();
+  const bankReference = String(formData.get("bank_reference") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim();
 
   if (!tenantId) {
     return { error: "Mietverhältnis konnte nicht ermittelt werden." };
   }
-  if (!amountRaw || !valueDate) {
+  if (!amountRaw || !paidAt) {
     return { error: "Bitte Betrag und Wertstellungsdatum angeben." };
   }
 
   const amount = parseAmount(amountRaw);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return { error: "Bitte einen gültigen Betrag größer als 0 eingeben." };
+  // Negative Beträge sind erlaubt (Rückbuchung), nur 0 bzw. ungültig nicht.
+  if (!Number.isFinite(amount) || amount === 0) {
+    return { error: "Bitte einen gültigen Betrag ungleich 0 eingeben." };
   }
 
-  const payer = PAYERS.includes(payerRaw as RentPayer)
-    ? (payerRaw as RentPayer)
+  const payer = PAYERS.includes(payerRaw as PayerType)
+    ? (payerRaw as PayerType)
     : "tenant";
 
   const supabase = await createClient();
@@ -70,10 +71,11 @@ export async function recordPayment(
     user_id: user.id,
     tenant_id: tenantId,
     amount,
-    value_date: valueDate,
+    paid_at: paidAt,
     payer,
-    purpose: purpose || null,
-    note: note || null,
+    source: "manual",
+    bank_reference: bankReference || null,
+    notes: notes || null,
   });
 
   if (error) {

@@ -15,14 +15,15 @@ export type Database = {
       dunning_letters: {
         Row: {
           amount_due: number
-          charge_id: string | null
+          covered_periods: string[]
           created_at: string
-          due_date: string | null
+          fee: number
           id: string
-          late_fee: number
+          issued_at: string
           level: number
           notes: string | null
-          sent_date: string | null
+          payment_deadline: string
+          pdf_url: string | null
           status: Database["public"]["Enums"]["dunning_status"]
           tenant_id: string
           updated_at: string
@@ -30,14 +31,15 @@ export type Database = {
         }
         Insert: {
           amount_due: number
-          charge_id?: string | null
+          covered_periods?: string[]
           created_at?: string
-          due_date?: string | null
+          fee?: number
           id?: string
-          late_fee?: number
-          level?: number
+          issued_at: string
+          level: number
           notes?: string | null
-          sent_date?: string | null
+          payment_deadline: string
+          pdf_url?: string | null
           status?: Database["public"]["Enums"]["dunning_status"]
           tenant_id: string
           updated_at?: string
@@ -45,26 +47,21 @@ export type Database = {
         }
         Update: {
           amount_due?: number
-          charge_id?: string | null
+          covered_periods?: string[]
           created_at?: string
-          due_date?: string | null
+          fee?: number
           id?: string
-          late_fee?: number
+          issued_at?: string
           level?: number
           notes?: string | null
-          sent_date?: string | null
+          payment_deadline?: string
+          pdf_url?: string | null
           status?: Database["public"]["Enums"]["dunning_status"]
           tenant_id?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "dunning_letters_charge_id_fkey"
-            columns: ["charge_id"]
-            referencedRelation: "rent_charges"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "dunning_letters_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -285,34 +282,44 @@ export type Database = {
       }
       rent_charges: {
         Row: {
-          amount: number
+          cold_rent: number
           created_at: string
           due_date: string
+          heating_costs_advance: number
           id: string
           notes: string | null
-          period_month: string
+          operating_costs_advance: number
+          period: string
+          source: Database["public"]["Enums"]["charge_source"]
           tenant_id: string
+          total_amount: number
           updated_at: string
           user_id: string
         }
         Insert: {
-          amount: number
+          cold_rent?: number
           created_at?: string
           due_date: string
+          heating_costs_advance?: number
           id?: string
           notes?: string | null
-          period_month: string
+          operating_costs_advance?: number
+          period: string
+          source?: Database["public"]["Enums"]["charge_source"]
           tenant_id: string
           updated_at?: string
           user_id: string
         }
         Update: {
-          amount?: number
+          cold_rent?: number
           created_at?: string
           due_date?: string
+          heating_costs_advance?: number
           id?: string
           notes?: string | null
-          period_month?: string
+          operating_costs_advance?: number
+          period?: string
+          source?: Database["public"]["Enums"]["charge_source"]
           tenant_id?: string
           updated_at?: string
           user_id?: string
@@ -335,39 +342,45 @@ export type Database = {
       rent_payments: {
         Row: {
           amount: number
+          bank_reference: string | null
           created_at: string
           id: string
-          note: string | null
-          payer: Database["public"]["Enums"]["rent_payer"]
-          purpose: string | null
+          import_hash: string | null
+          notes: string | null
+          paid_at: string
+          payer: Database["public"]["Enums"]["payer_type"]
+          source: Database["public"]["Enums"]["payment_source"]
           tenant_id: string
           updated_at: string
           user_id: string
-          value_date: string
         }
         Insert: {
           amount: number
+          bank_reference?: string | null
           created_at?: string
           id?: string
-          note?: string | null
-          payer?: Database["public"]["Enums"]["rent_payer"]
-          purpose?: string | null
+          import_hash?: string | null
+          notes?: string | null
+          paid_at: string
+          payer?: Database["public"]["Enums"]["payer_type"]
+          source?: Database["public"]["Enums"]["payment_source"]
           tenant_id: string
           updated_at?: string
           user_id: string
-          value_date: string
         }
         Update: {
           amount?: number
+          bank_reference?: string | null
           created_at?: string
           id?: string
-          note?: string | null
-          payer?: Database["public"]["Enums"]["rent_payer"]
-          purpose?: string | null
+          import_hash?: string | null
+          notes?: string | null
+          paid_at?: string
+          payer?: Database["public"]["Enums"]["payer_type"]
+          source?: Database["public"]["Enums"]["payment_source"]
           tenant_id?: string
           updated_at?: string
           user_id?: string
-          value_date?: string
         }
         Relationships: [
           {
@@ -659,7 +672,7 @@ export type Database = {
           first_name: string | null
           last_name: string | null
           tenant_id: string | null
-          total_charged: number
+          total_due: number
           total_paid: number
           unit_id: string | null
           user_id: string | null
@@ -692,12 +705,11 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: {
-          amount: number
           charge_id: string
           due_date: string
           open_amount: number
-          paid_amount: number
-          period_month: string
+          period: string
+          total_amount: number
         }[]
       }
     }
@@ -709,13 +721,14 @@ export type Database = {
         | "consumption"
         | "ownership_share"
         | "direct"
+      charge_source: "auto" | "manual"
       deposit_type:
         | "cash_deposit"
         | "bank_guarantee"
         | "deposit_insurance"
         | "pledged_savings"
         | "none"
-      dunning_status: "draft" | "sent" | "paid" | "canceled"
+      dunning_status: "draft" | "sent" | "resolved" | "obsolete"
       operating_cost_type:
         | "property_tax"
         | "water_supply"
@@ -735,7 +748,8 @@ export type Database = {
         | "laundry_facilities"
         | "other_operating_costs"
         | "non_apportionable"
-      rent_payer: "tenant" | "jobcenter" | "other"
+      payer_type: "tenant" | "jobcenter" | "other"
+      payment_source: "manual" | "csv_import"
       subscription_plan: "free" | "starter" | "pro" | "business"
       subscription_status:
         | "trialing"
@@ -887,6 +901,7 @@ export const Constants = {
         "ownership_share",
         "direct",
       ],
+      charge_source: ["auto", "manual"],
       deposit_type: [
         "cash_deposit",
         "bank_guarantee",
@@ -894,7 +909,7 @@ export const Constants = {
         "pledged_savings",
         "none",
       ],
-      dunning_status: ["draft", "sent", "paid", "canceled"],
+      dunning_status: ["draft", "sent", "resolved", "obsolete"],
       operating_cost_type: [
         "property_tax",
         "water_supply",
@@ -915,7 +930,8 @@ export const Constants = {
         "other_operating_costs",
         "non_apportionable",
       ],
-      rent_payer: ["tenant", "jobcenter", "other"],
+      payer_type: ["tenant", "jobcenter", "other"],
+      payment_source: ["manual", "csv_import"],
       subscription_plan: ["free", "starter", "pro", "business"],
       subscription_status: [
         "trialing",
