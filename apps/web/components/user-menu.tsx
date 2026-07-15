@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { User, ChevronDown, LogOut, Settings, Receipt } from "lucide-react";
+import { User, ChevronDown, LogOut, Settings, Receipt, Calculator } from "lucide-react";
 import { logout } from "@/app/actions";
 import {
   DropdownMenu,
@@ -33,6 +33,12 @@ export function UserMenu({ email }: { email: string }) {
           <Link href="/belege">
             <Receipt className="size-4" />
             Belege
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/abrechnung">
+            <Calculator className="size-4" />
+            Abrechnungen
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

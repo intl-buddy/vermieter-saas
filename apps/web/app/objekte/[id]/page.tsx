@@ -339,6 +339,23 @@ export default async function ObjektDetailPage({
       </section>
 
       <section className="mt-10">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">Nebenkostenabrechnung</h2>
+          <Button asChild>
+            <Link href={`/abrechnung/neu?objekt=${property.id}`}>
+              Nebenkostenabrechnung erstellen
+            </Link>
+          </Button>
+        </div>
+        <Card>
+          <CardContent className="p-5 text-sm text-muted-foreground">
+            Erstelle eine tagesgenaue Betriebskostenabrechnung für dieses Objekt –
+            Schritt für Schritt inkl. Heizkosten, Personen und § 35a-Ausweis.
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mt-10">
         <h2 className="mb-3 text-lg font-semibold">Belege</h2>
         <Card>
           <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">

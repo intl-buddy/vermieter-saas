@@ -1,0 +1,434 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import {
+  calculateBilling,
+  type AllocationKey,
+  type BillingInput,
+  type CostRecordInput,
+  type TenancyInput,
+  type Type35a,
+} from "@repo/core";
+import { createClient } from "@/lib/supabase/server";
+import { renderBillingStatementPdf } from "@/lib/pdf/billingStatement";
+import { COST_TYPE_LABELS, ALLOCATION_LABELS } from "@/app/belege/labels";
+
+export type WizardUnit = {
+  id: string;
+  label: string;
+  living_area: number | null;
+  ownership_share: number | null;
+};
+export type WizardTenancy = {
+  tenant_id: string;
+  unit_id: string;
+  unit_label: string;
+  first_name: string;
+  last_name: string;
+  move_in: string;
+  move_out: string | null;
+  persons_count: number;
+};
+export type WizardRecord = {
+  id: string;
+  cost_type: string;
+  allocation_key: string;
+  amount: number;
+  is_apportionable: boolean;
+  unit_id: string | null;
+  labor_cost_35a: number;
+  type_35a: string;
+  billing_period_start: string;
+  billing_period_end: string;
+};
+export type PersonPeriod = { from: string; to: string; persons: number };
+
+export type WizardData = {
+  property: {
+    id: string;
+    name: string;
+    street: string;
+    house_number: string;
+    zip: string;
+    city: string;
+  };
+  units: WizardUnit[];
+  tenancies: WizardTenancy[];
+  records: WizardRecord[];
+  personPeriods: Record<string, PersonPeriod[]>;
+  prepaymentsOperating: Record<string, number>;
+  prepaymentsHeating: Record<string, number>;
+  existingFinalized: boolean;
+  periodStart: string;
+  periodEnd: string;
+};
+
+export type FinalizePayload = {
+  propertyId: string;
+  periodStart: string;
+  periodEnd: string;
+  heating: Record<string, number>;
+  personPeriods: Record<string, PersonPeriod[]>;
+};
+
+async function assembleData(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  propertyId: string,
+  periodStart: string,
+  periodEnd: string,
+): Promise<WizardData | { error: string }> {
+  const { data: property } = await supabase
+    .from("properties")
+    .select("id, name, street, house_number, zip, city")
+    .eq("id", propertyId)
+    .maybeSingle();
+  if (!property) return { error: "Objekt nicht gefunden." };
+
+  const { data: units } = await supabase
+    .from("units")
+    .select("id, label, living_area, ownership_share")
+    .eq("property_id", propertyId)
+    .order("label");
+  const unitList = units ?? [];
+  const unitIds = unitList.map((u) => u.id);
+  const unitLabel = new Map(unitList.map((u) => [u.id, u.label]));
+
+  let tenancies: WizardTenancy[] = [];
+  const personPeriods: Record<string, PersonPeriod[]> = {};
+  const prepaymentsOperating: Record<string, number> = {};
+  const prepaymentsHeating: Record<string, number> = {};
+
+  if (unitIds.length > 0) {
+    const { data: tenants } = await supabase
+      .from("tenants")
+      .select(
+        "id, unit_id, first_name, last_name, move_in_date, move_out_date, persons_count",
+      )
+      .in("unit_id", unitIds)
+      .lte("move_in_date", periodEnd)
+      .or(`move_out_date.is.null,move_out_date.gte.${periodStart}`);
+
+    tenancies = (tenants ?? []).map((t) => ({
+      tenant_id: t.id,
+      unit_id: t.unit_id,
+      unit_label: unitLabel.get(t.unit_id) ?? "",
+      first_name: t.first_name,
+      last_name: t.last_name,
+      move_in: t.move_in_date,
+      move_out: t.move_out_date,
+      persons_count: t.persons_count,
+    }));
+
+    const tenantIds = tenancies.map((t) => t.tenant_id);
+    if (tenantIds.length > 0) {
+      const [{ data: pps }, { data: charges }] = await Promise.all([
+        supabase
+          .from("tenant_person_periods")
+          .select("tenant_id, valid_from, valid_to, persons_count")
+          .in("tenant_id", tenantIds)
+          .order("valid_from"),
+        supabase
+          .from("rent_charges")
+          .select("tenant_id, operating_costs_advance, heating_costs_advance")
+          .in("tenant_id", tenantIds)
+          .gte("period", periodStart)
+          .lte("period", periodEnd),
+      ]);
+
+      for (const p of pps ?? []) {
+        (personPeriods[p.tenant_id] ??= []).push({
+          from: p.valid_from,
+          to: p.valid_to,
+          persons: p.persons_count,
+        });
+      }
+      for (const c of charges ?? []) {
+        prepaymentsOperating[c.tenant_id] =
+          (prepaymentsOperating[c.tenant_id] ?? 0) + c.operating_costs_advance;
+        prepaymentsHeating[c.tenant_id] =
+          (prepaymentsHeating[c.tenant_id] ?? 0) + c.heating_costs_advance;
+      }
+    }
+  }
+
+  const { data: records } = await supabase
+    .from("operating_costs_records")
+    .select(
+      "id, cost_type, allocation_key, amount, is_apportionable, unit_id, labor_cost_35a, type_35a, billing_period_start, billing_period_end",
+    )
+    .eq("property_id", propertyId)
+    .lte("billing_period_start", periodEnd)
+    .gte("billing_period_end", periodStart)
+    .order("cost_type");
+
+  const { count: finalizedCount } = await supabase
+    .from("billing_runs")
+    .select("id", { count: "exact", head: true })
+    .eq("property_id", propertyId)
+    .eq("status", "finalized")
+    .eq("period_start", periodStart)
+    .eq("period_end", periodEnd);
+
+  return {
+    property,
+    units: unitList,
+    tenancies,
+    records: records ?? [],
+    personPeriods,
+    prepaymentsOperating,
+    prepaymentsHeating,
+    existingFinalized: (finalizedCount ?? 0) > 0,
+    periodStart,
+    periodEnd,
+  };
+}
+
+export async function loadWizardData(
+  propertyId: string,
+  periodStart: string,
+  periodEnd: string,
+): Promise<WizardData | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Bitte melde dich erneut an." };
+  if (!propertyId || !periodStart || !periodEnd) {
+    return { error: "Objekt und Zeitraum sind erforderlich." };
+  }
+  return assembleData(supabase, propertyId, periodStart, periodEnd);
+}
+
+/** Baut die BillingInput-Struktur aus den geladenen/übergebenen Daten. */
+function buildBillingInput(
+  data: WizardData,
+  heating: Record<string, number>,
+  personPeriods: Record<string, PersonPeriod[]>,
+): BillingInput {
+  const tenancies: TenancyInput[] = data.tenancies.map((t) => ({
+    tenant_id: t.tenant_id,
+    unit_id: t.unit_id,
+    move_in: t.move_in,
+    move_out: t.move_out,
+    persons_count: t.persons_count,
+    person_periods: personPeriods[t.tenant_id],
+  }));
+  const records: CostRecordInput[] = data.records.map((r) => ({
+    id: r.id,
+    cost_type: r.cost_type,
+    allocation_key: r.allocation_key as AllocationKey,
+    amount: r.amount,
+    is_apportionable: r.is_apportionable,
+    unit_id: r.unit_id,
+    labor_cost_35a: r.labor_cost_35a,
+    type_35a: r.type_35a as Type35a,
+  }));
+  return {
+    period_start: data.periodStart,
+    period_end: data.periodEnd,
+    units: data.units.map((u) => ({
+      id: u.id,
+      living_area: u.living_area,
+      ownership_share: u.ownership_share,
+    })),
+    tenancies,
+    records,
+    heating,
+    prepaymentsOperating: data.prepaymentsOperating,
+    prepaymentsHeating: data.prepaymentsHeating,
+  };
+}
+
+function todayIso(): string {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 10);
+}
+
+function addDaysIso(iso: string, days: number): string {
+  const parts = iso.split("-");
+  const y = Number(parts[0]);
+  const m = Number(parts[1]);
+  const d = Number(parts[2]);
+  const base = new Date(Date.UTC(y, m - 1, d));
+  base.setUTCDate(base.getUTCDate() + days);
+  return base.toISOString().slice(0, 10);
+}
+
+export async function finalizeBilling(
+  payload: FinalizePayload,
+): Promise<{ runId?: string; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Bitte melde dich erneut an." };
+
+  const data = await assembleData(
+    supabase,
+    payload.propertyId,
+    payload.periodStart,
+    payload.periodEnd,
+  );
+  if ("error" in data) return { error: data.error };
+  if (data.tenancies.length === 0) {
+    return { error: "Für diesen Zeitraum gibt es keine Mietverhältnisse." };
+  }
+
+  // Personenperioden persistieren (für die betroffenen Mieter ersetzen)
+  const editedTenantIds = Object.keys(payload.personPeriods);
+  if (editedTenantIds.length > 0) {
+    await supabase
+      .from("tenant_person_periods")
+      .delete()
+      .in("tenant_id", editedTenantIds);
+    const rows = editedTenantIds.flatMap((tid) =>
+      (payload.personPeriods[tid] ?? []).map((p) => ({
+        user_id: user.id,
+        tenant_id: tid,
+        valid_from: p.from,
+        valid_to: p.to,
+        persons_count: p.persons,
+      })),
+    );
+    if (rows.length > 0) {
+      await supabase.from("tenant_person_periods").insert(rows);
+    }
+  }
+
+  const input = buildBillingInput(
+    data,
+    payload.heating,
+    payload.personPeriods,
+  );
+  const result = calculateBilling(input);
+
+  const totalCosts =
+    data.records.reduce((s, r) => s + r.amount, 0) +
+    Object.values(payload.heating).reduce((s, v) => s + v, 0);
+
+  // Absenderprofil + Bankverbindung
+  const { data: profile } = await supabase
+    .from("users")
+    .select(
+      "full_name, company_name, address_street, address_zip, address_city, iban, bank_name, bic",
+    )
+    .eq("id", user.id)
+    .maybeSingle();
+  const { data: propWithIban } = await supabase
+    .from("properties")
+    .select("rent_iban")
+    .eq("id", payload.propertyId)
+    .maybeSingle();
+  const paymentIban = propWithIban?.rent_iban ?? profile?.iban ?? null;
+
+  const { data: run, error: runError } = await supabase
+    .from("billing_runs")
+    .insert({
+      user_id: user.id,
+      property_id: payload.propertyId,
+      period_start: payload.periodStart,
+      period_end: payload.periodEnd,
+      status: "finalized",
+      total_costs: totalCosts,
+      tenant_count: result.statements.length,
+    })
+    .select("id")
+    .single();
+  if (runError || !run) {
+    return { error: `Abrechnungslauf fehlgeschlagen: ${runError?.message}` };
+  }
+
+  const tenancyById = new Map(data.tenancies.map((t) => [t.tenant_id, t]));
+  const issueDate = todayIso();
+  const deadline = addDaysIso(issueDate, 30);
+
+  for (const st of result.statements) {
+    const t = tenancyById.get(st.tenant_id);
+    const positions = st.positions.map((p) => ({
+      cost_type: COST_TYPE_LABELS[p.cost_type as keyof typeof COST_TYPE_LABELS] ?? p.cost_type,
+      allocation: ALLOCATION_LABELS[p.allocation_key] ?? p.allocation_key,
+      total_cost: p.total_cost,
+      share: p.share,
+    }));
+
+    const { data: statement } = await supabase
+      .from("billing_statements")
+      .insert({
+        user_id: user.id,
+        billing_run_id: run.id,
+        tenant_id: st.tenant_id,
+        unit_id: t?.unit_id ?? null,
+        total_share: st.total_share,
+        heating_costs: st.heating_costs,
+        prepayments_operating: st.prepayments_operating,
+        prepayments_heating: st.prepayments_heating,
+        balance: st.balance,
+        labor_35a_household: st.labor_35a_household,
+        labor_35a_craftsman: st.labor_35a_craftsman,
+        line_items: positions,
+      })
+      .select("id")
+      .single();
+    if (!statement) continue;
+
+    // PDF rendern + hochladen
+    const pdf = await renderBillingStatementPdf({
+      sender: {
+        fullName: profile?.full_name ?? "",
+        companyName: profile?.company_name ?? null,
+        addressStreet: profile?.address_street ?? null,
+        addressZip: profile?.address_zip ?? null,
+        addressCity: profile?.address_city ?? null,
+      },
+      recipient: {
+        name: `${t?.first_name ?? ""} ${t?.last_name ?? ""}`.trim(),
+        lastName: t?.last_name ?? "",
+        street: `${data.property.street} ${data.property.house_number}`.trim(),
+        zipCity: `${data.property.zip} ${data.property.city}`.trim(),
+      },
+      objekt: data.property.name,
+      einheit: t?.unit_label ?? "",
+      periodStart: payload.periodStart,
+      periodEnd: payload.periodEnd,
+      issueDate,
+      positions: st.positions.map((p) => ({
+        costType:
+          COST_TYPE_LABELS[p.cost_type as keyof typeof COST_TYPE_LABELS] ??
+          p.cost_type,
+        totalCost: p.total_cost,
+        allocationLabel: ALLOCATION_LABELS[p.allocation_key] ?? p.allocation_key,
+        share: p.share,
+      })),
+      heatingCosts: st.heating_costs,
+      totalShare: st.total_share,
+      prepaymentsOperating: st.prepayments_operating,
+      prepaymentsHeating: st.prepayments_heating,
+      balance: st.balance,
+      labor35aHousehold: st.labor_35a_household,
+      labor35aCraftsman: st.labor_35a_craftsman,
+      payment: {
+        iban: paymentIban,
+        bankName: profile?.bank_name ?? null,
+        bic: profile?.bic ?? null,
+      },
+      paymentDeadline: deadline,
+    });
+
+    const path = `${user.id}/${statement.id}.pdf`;
+    const bytes = new Uint8Array(pdf.byteLength);
+    bytes.set(pdf);
+    const { error: uploadError } = await supabase.storage
+      .from("statements")
+      .upload(path, bytes, { contentType: "application/pdf", upsert: true });
+    if (!uploadError) {
+      await supabase
+        .from("billing_statements")
+        .update({ pdf_url: path })
+        .eq("id", statement.id);
+    }
+  }
+
+  revalidatePath("/abrechnung");
+  return { runId: run.id };
+}

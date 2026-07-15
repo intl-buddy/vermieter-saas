@@ -12,6 +12,140 @@ export type Database = {
   }
   public: {
     Tables: {
+      billing_runs: {
+        Row: {
+          created_at: string
+          id: string
+          period_end: string
+          period_start: string
+          property_id: string
+          status: Database["public"]["Enums"]["billing_run_status"]
+          tenant_count: number
+          total_costs: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          period_end: string
+          period_start: string
+          property_id: string
+          status?: Database["public"]["Enums"]["billing_run_status"]
+          tenant_count?: number
+          total_costs?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          period_end?: string
+          period_start?: string
+          property_id?: string
+          status?: Database["public"]["Enums"]["billing_run_status"]
+          tenant_count?: number
+          total_costs?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_runs_property_id_fkey"
+            columns: ["property_id"]
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_runs_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_statements: {
+        Row: {
+          balance: number
+          billing_run_id: string
+          created_at: string
+          heating_costs: number
+          id: string
+          labor_35a_craftsman: number
+          labor_35a_household: number
+          line_items: Json
+          pdf_url: string | null
+          prepayments_heating: number
+          prepayments_operating: number
+          tenant_id: string
+          total_share: number
+          unit_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          billing_run_id: string
+          created_at?: string
+          heating_costs?: number
+          id?: string
+          labor_35a_craftsman?: number
+          labor_35a_household?: number
+          line_items?: Json
+          pdf_url?: string | null
+          prepayments_heating?: number
+          prepayments_operating?: number
+          tenant_id: string
+          total_share?: number
+          unit_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          billing_run_id?: string
+          created_at?: string
+          heating_costs?: number
+          id?: string
+          labor_35a_craftsman?: number
+          labor_35a_household?: number
+          line_items?: Json
+          pdf_url?: string | null
+          prepayments_heating?: number
+          prepayments_operating?: number
+          tenant_id?: string
+          total_share?: number
+          unit_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_statements_billing_run_id_fkey"
+            columns: ["billing_run_id"]
+            referencedRelation: "billing_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_statements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_statements_unit_id_fkey"
+            columns: ["unit_id"]
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_statements_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dunning_letters: {
         Row: {
           amount_due: number
@@ -159,10 +293,12 @@ export type Database = {
           invoice_date: string | null
           invoice_number: string | null
           is_apportionable: boolean
+          labor_cost_35a: number
           notes: string | null
           paid_date: string | null
           property_id: string
           receipt_url: string | null
+          type_35a: Database["public"]["Enums"]["type_35a_category"]
           unit_id: string | null
           updated_at: string
           user_id: string
@@ -181,10 +317,12 @@ export type Database = {
           invoice_date?: string | null
           invoice_number?: string | null
           is_apportionable?: boolean
+          labor_cost_35a?: number
           notes?: string | null
           paid_date?: string | null
           property_id: string
           receipt_url?: string | null
+          type_35a?: Database["public"]["Enums"]["type_35a_category"]
           unit_id?: string | null
           updated_at?: string
           user_id: string
@@ -203,10 +341,12 @@ export type Database = {
           invoice_date?: string | null
           invoice_number?: string | null
           is_apportionable?: boolean
+          labor_cost_35a?: number
           notes?: string | null
           paid_date?: string | null
           property_id?: string
           receipt_url?: string | null
+          type_35a?: Database["public"]["Enums"]["type_35a_category"]
           unit_id?: string | null
           updated_at?: string
           user_id?: string
@@ -479,6 +619,52 @@ export type Database = {
           },
         ]
       }
+      tenant_person_periods: {
+        Row: {
+          created_at: string
+          id: string
+          persons_count: number
+          tenant_id: string
+          updated_at: string
+          user_id: string
+          valid_from: string
+          valid_to: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          persons_count: number
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+          valid_from: string
+          valid_to: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          persons_count?: number
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+          valid_from?: string
+          valid_to?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_person_periods_tenant_id_fkey"
+            columns: ["tenant_id"]
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_person_periods_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           cold_rent: number
@@ -745,6 +931,7 @@ export type Database = {
         | "consumption"
         | "ownership_share"
         | "direct"
+      billing_run_status: "draft" | "finalized"
       charge_source: "auto" | "manual"
       deposit_type:
         | "cash_deposit"
@@ -789,6 +976,7 @@ export type Database = {
         | "semiannually"
         | "yearly"
       task_status: "open" | "done" | "overdue"
+      type_35a_category: "none" | "household_service" | "craftsman_service"
       unit_type: "residential" | "commercial" | "parking" | "other"
     }
     CompositeTypes: {
@@ -925,6 +1113,7 @@ export const Constants = {
         "ownership_share",
         "direct",
       ],
+      billing_run_status: ["draft", "finalized"],
       charge_source: ["auto", "manual"],
       deposit_type: [
         "cash_deposit",
@@ -973,6 +1162,7 @@ export const Constants = {
         "yearly",
       ],
       task_status: ["open", "done", "overdue"],
+      type_35a_category: ["none", "household_service", "craftsman_service"],
       unit_type: ["residential", "commercial", "parking", "other"],
     },
   },

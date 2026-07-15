@@ -7,6 +7,7 @@ import {
   ClipboardList,
   ClipboardPlus,
   Receipt,
+  Calculator,
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -196,7 +197,7 @@ export default async function DashboardPage() {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Schnellaktionen
         </h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <CreateRecordDialog
             properties={propertyOptions}
             trigger={
@@ -217,6 +218,15 @@ export default async function DashboardPage() {
               iconBg="bg-secondary-100 text-secondary-700"
               title="Zahlung erfassen"
               subtitle="Mieteingang verbuchen"
+            />
+          </Link>
+
+          <Link href="/abrechnung/neu" className={ACTION_CARD_CLS}>
+            <QuickActionContent
+              icon={Calculator}
+              iconBg="bg-secondary-100 text-secondary-700"
+              title="Nebenkostenabrechnung"
+              subtitle="Betriebskosten abrechnen"
             />
           </Link>
 
