@@ -7,45 +7,48 @@ export type Json =
   | Json[]
 
 export type Database = {
-  __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
-  }
   public: {
     Tables: {
       billing_runs: {
         Row: {
           created_at: string
+          finalized_at: string | null
           id: string
+          notes: string | null
           period_end: string
           period_start: string
           property_id: string
           status: Database["public"]["Enums"]["billing_run_status"]
-          tenant_count: number
-          total_costs: number
+          tenant_count: number | null
+          total_costs: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          finalized_at?: string | null
           id?: string
+          notes?: string | null
           period_end: string
           period_start: string
           property_id: string
           status?: Database["public"]["Enums"]["billing_run_status"]
-          tenant_count?: number
-          total_costs?: number
+          tenant_count?: number | null
+          total_costs?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          finalized_at?: string | null
           id?: string
+          notes?: string | null
           period_end?: string
           period_start?: string
           property_id?: string
           status?: Database["public"]["Enums"]["billing_run_status"]
-          tenant_count?: number
-          total_costs?: number
+          tenant_count?: number | null
+          total_costs?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -82,20 +85,22 @@ export type Database = {
           prepayments_operating: number
           prepayments_source: string
           tenant_id: string
+          total_35a_craftsman: number
+          total_35a_household: number
           total_share: number
-          unit_id: string | null
+          unit_id: string
           updated_at: string
           user_id: string
         }
         Insert: {
-          balance?: number
+          balance: number
           billing_run_id: string
           created_at?: string
           heating_costs?: number
           id?: string
           labor_35a_craftsman?: number
           labor_35a_household?: number
-          line_items?: Json
+          line_items: Json
           occupancy_days?: number | null
           occupancy_end?: string | null
           occupancy_start?: string | null
@@ -104,8 +109,10 @@ export type Database = {
           prepayments_operating?: number
           prepayments_source?: string
           tenant_id: string
-          total_share?: number
-          unit_id?: string | null
+          total_35a_craftsman?: number
+          total_35a_household?: number
+          total_share: number
+          unit_id: string
           updated_at?: string
           user_id: string
         }
@@ -126,8 +133,10 @@ export type Database = {
           prepayments_operating?: number
           prepayments_source?: string
           tenant_id?: string
+          total_35a_craftsman?: number
+          total_35a_household?: number
           total_share?: number
-          unit_id?: string | null
+          unit_id?: string
           updated_at?: string
           user_id?: string
         }
@@ -137,6 +146,12 @@ export type Database = {
             columns: ["billing_run_id"]
             referencedRelation: "billing_runs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_statements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            referencedRelation: "tenant_balances"
+            referencedColumns: ["tenant_id"]
           },
           {
             foreignKeyName: "billing_statements_tenant_id_fkey"
@@ -181,7 +196,7 @@ export type Database = {
           created_at?: string
           fee?: number
           id?: string
-          issued_at: string
+          issued_at?: string
           level: number
           notes?: string | null
           payment_deadline: string
@@ -208,6 +223,12 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "dunning_letters_tenant_id_fkey"
+            columns: ["tenant_id"]
+            referencedRelation: "tenant_balances"
+            referencedColumns: ["tenant_id"]
+          },
           {
             foreignKeyName: "dunning_letters_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -305,12 +326,12 @@ export type Database = {
           invoice_date: string | null
           invoice_number: string | null
           is_apportionable: boolean
-          labor_cost_35a: number
+          labor_cost_35a: number | null
           notes: string | null
           paid_date: string | null
           property_id: string
           receipt_url: string | null
-          type_35a: Database["public"]["Enums"]["type_35a_category"]
+          type_35a: Database["public"]["Enums"]["category_35a"] | null
           unit_id: string | null
           updated_at: string
           user_id: string
@@ -329,12 +350,12 @@ export type Database = {
           invoice_date?: string | null
           invoice_number?: string | null
           is_apportionable?: boolean
-          labor_cost_35a?: number
+          labor_cost_35a?: number | null
           notes?: string | null
           paid_date?: string | null
           property_id: string
           receipt_url?: string | null
-          type_35a?: Database["public"]["Enums"]["type_35a_category"]
+          type_35a?: Database["public"]["Enums"]["category_35a"] | null
           unit_id?: string | null
           updated_at?: string
           user_id: string
@@ -353,12 +374,12 @@ export type Database = {
           invoice_date?: string | null
           invoice_number?: string | null
           is_apportionable?: boolean
-          labor_cost_35a?: number
+          labor_cost_35a?: number | null
           notes?: string | null
           paid_date?: string | null
           property_id?: string
           receipt_url?: string | null
-          type_35a?: Database["public"]["Enums"]["type_35a_category"]
+          type_35a?: Database["public"]["Enums"]["category_35a"] | null
           unit_id?: string | null
           updated_at?: string
           user_id?: string
@@ -456,7 +477,7 @@ export type Database = {
           period: string
           source: Database["public"]["Enums"]["charge_source"]
           tenant_id: string
-          total_amount: number
+          total_amount: number | null
           updated_at: string
           user_id: string
         }
@@ -471,6 +492,7 @@ export type Database = {
           period: string
           source?: Database["public"]["Enums"]["charge_source"]
           tenant_id: string
+          total_amount?: number | null
           updated_at?: string
           user_id: string
         }
@@ -485,10 +507,17 @@ export type Database = {
           period?: string
           source?: Database["public"]["Enums"]["charge_source"]
           tenant_id?: string
+          total_amount?: number | null
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rent_charges_tenant_id_fkey"
+            columns: ["tenant_id"]
+            referencedRelation: "tenant_balances"
+            referencedColumns: ["tenant_id"]
+          },
           {
             foreignKeyName: "rent_charges_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -547,6 +576,12 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rent_payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            referencedRelation: "tenant_balances"
+            referencedColumns: ["tenant_id"]
+          },
           {
             foreignKeyName: "rent_payments_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -640,7 +675,7 @@ export type Database = {
           updated_at: string
           user_id: string
           valid_from: string
-          valid_to: string
+          valid_to: string | null
         }
         Insert: {
           created_at?: string
@@ -650,7 +685,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           valid_from: string
-          valid_to: string
+          valid_to?: string | null
         }
         Update: {
           created_at?: string
@@ -660,9 +695,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
           valid_from?: string
-          valid_to?: string
+          valid_to?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tenant_person_periods_tenant_id_fkey"
+            columns: ["tenant_id"]
+            referencedRelation: "tenant_balances"
+            referencedColumns: ["tenant_id"]
+          },
           {
             foreignKeyName: "tenant_person_periods_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -893,22 +934,16 @@ export type Database = {
     Views: {
       tenant_balances: {
         Row: {
-          balance: number
+          balance: number | null
           first_name: string | null
           last_name: string | null
           tenant_id: string | null
-          total_due: number
-          total_paid: number
+          total_due: number | null
+          total_paid: number | null
           unit_id: string | null
           user_id: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "tenants_pkey"
-            columns: ["tenant_id"]
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "tenants_unit_id_fkey"
             columns: ["unit_id"]
@@ -925,10 +960,11 @@ export type Database = {
       }
     }
     Functions: {
+      generate_monthly_charges: { Args: never; Returns: number }
+      generate_tasks_from_templates: { Args: never; Returns: number }
+      mark_overdue_tasks: { Args: never; Returns: number }
       open_charges: {
-        Args: {
-          p_tenant_id: string
-        }
+        Args: { p_tenant_id: string }
         Returns: {
           charge_id: string
           due_date: string
@@ -947,6 +983,7 @@ export type Database = {
         | "ownership_share"
         | "direct"
       billing_run_status: "draft" | "finalized"
+      category_35a: "household_services" | "craftsman_services"
       charge_source: "auto" | "manual"
       deposit_type:
         | "cash_deposit"
@@ -991,7 +1028,6 @@ export type Database = {
         | "semiannually"
         | "yearly"
       task_status: "open" | "done" | "overdue"
-      type_35a_category: "none" | "household_service" | "craftsman_service"
       unit_type: "residential" | "commercial" | "parking" | "other"
     }
     CompositeTypes: {
@@ -1129,6 +1165,7 @@ export const Constants = {
         "direct",
       ],
       billing_run_status: ["draft", "finalized"],
+      category_35a: ["household_services", "craftsman_services"],
       charge_source: ["auto", "manual"],
       deposit_type: [
         "cash_deposit",
@@ -1177,8 +1214,8 @@ export const Constants = {
         "yearly",
       ],
       task_status: ["open", "done", "overdue"],
-      type_35a_category: ["none", "household_service", "craftsman_service"],
       unit_type: ["residential", "commercial", "parking", "other"],
     },
   },
 } as const
+
