@@ -89,18 +89,18 @@ export default async function MieteingangPage() {
                     <TableCell className="font-medium">
                       <Link
                         href={`/mieteingang/${row.tenant_id}`}
-                        className="text-foreground hover:text-primary"
+                        className="block max-w-[220px] truncate text-foreground hover:text-primary"
                       >
                         {tenantName(row.first_name, row.last_name)}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                    <TableCell className="whitespace-nowrap text-right tabular-nums text-muted-foreground">
                       {formatCurrency(row.total_due)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                    <TableCell className="whitespace-nowrap text-right tabular-nums text-muted-foreground">
                       {formatCurrency(row.total_paid)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="whitespace-nowrap text-right tabular-nums">
                       {isArrears ? (
                         <Badge variant="danger">
                           {formatCurrency(row.balance)}

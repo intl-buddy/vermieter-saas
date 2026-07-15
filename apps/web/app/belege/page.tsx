@@ -65,7 +65,7 @@ export default async function BelegePage({
   let query = supabase
     .from("operating_costs_records")
     .select(
-      "id, invoice_date, invoice_number, paid_date, cost_type, vendor, amount, gross_amount, vat_rate, allocation_key, billing_period_start, billing_period_end, is_apportionable, receipt_url, notes, property_id, properties(name)",
+      "id, invoice_date, invoice_number, paid_date, cost_type, vendor, amount, gross_amount, vat_rate, allocation_key, billing_period_start, billing_period_end, is_apportionable, receipt_url, notes, property_id, properties(name, street, house_number, zip, city)",
     );
   if (objekt) query = query.eq("property_id", objekt);
   if (kostenart) query = query.eq("cost_type", kostenart);
@@ -192,20 +192,29 @@ export default async function BelegePage({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Datum</TableHead>
+                <TableHead className="whitespace-nowrap">Datum</TableHead>
                 <TableHead>Kostenart</TableHead>
                 <TableHead>Objekt</TableHead>
                 <TableHead>Lieferant</TableHead>
                 <TableHead className="text-right">Betrag</TableHead>
-                <TableHead>EÜR-Jahr</TableHead>
+                <TableHead className="whitespace-nowrap">EÜR-Jahr</TableHead>
                 <TableHead>Umlage</TableHead>
                 <TableHead className="text-right">Beleg</TableHead>
-                <TableHead className="w-10"></TableHead>
+                <TableHead className="sticky right-0 z-10 w-12 border-l border-neutral-100 bg-white" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {records.map((r) => {
-                const property = r.properties as { name: string } | null;
+                const property = r.properties as {
+                  name: string;
+                  street: string;
+                  house_number: string;
+                  zip: string;
+                  city: string;
+                } | null;
+                const fullAddress = property
+                  ? `${property.name} · ${property.street} ${property.house_number}, ${property.zip} ${property.city}`
+                  : "";
                 const url = downloadUrls.get(r.id);
                 const values: RecordValues = {
                   id: r.id,
@@ -226,19 +235,31 @@ export default async function BelegePage({
                   notes: r.notes,
                 };
                 return (
-                  <TableRow key={r.id}>
-                    <TableCell>{formatDate(r.invoice_date)}</TableCell>
+                  <TableRow key={r.id} className="group">
+                    <TableCell className="whitespace-nowrap">
+                      {formatDate(r.invoice_date)}
+                    </TableCell>
                     <TableCell>{COST_TYPE_LABELS[r.cost_type]}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {property?.name ?? "–"}
+                      <span
+                        className="block max-w-[180px] truncate"
+                        title={fullAddress}
+                      >
+                        {property?.name ?? "–"}
+                      </span>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {r.vendor || "–"}
+                      <span
+                        className="block max-w-[160px] truncate"
+                        title={r.vendor ?? undefined}
+                      >
+                        {r.vendor || "–"}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatCurrency(r.gross_amount ?? r.amount)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       {r.paid_date ? (
                         <span className="tabular-nums">
                           {r.paid_date.slice(0, 4)}
@@ -247,7 +268,7 @@ export default async function BelegePage({
                         <Badge variant="warning">Zahlungsdatum fehlt</Badge>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       {r.is_apportionable ? (
                         <Badge variant="success">umlagefähig</Badge>
                       ) : (
@@ -269,7 +290,7 @@ export default async function BelegePage({
                         <span className="text-neutral-300">–</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="sticky right-0 z-10 border-l border-neutral-100 bg-white text-right group-hover:bg-neutral-50">
                       <RecordRowActions
                         record={values}
                         properties={properties ?? []}

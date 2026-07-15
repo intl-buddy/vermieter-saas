@@ -84,16 +84,21 @@ export default async function ObjektePage() {
                     <TableCell className="font-medium">
                       <Link
                         href={`/objekte/${property.id}`}
-                        className="text-foreground hover:text-primary"
+                        className="block max-w-[220px] truncate text-foreground hover:text-primary"
                       >
                         {property.name}
                       </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {property.street} {property.house_number}, {property.zip}{" "}
-                      {property.city}
+                      <span
+                        className="block max-w-[280px] truncate"
+                        title={`${property.street} ${property.house_number}, ${property.zip} ${property.city}`}
+                      >
+                        {property.street} {property.house_number}, {property.zip}{" "}
+                        {property.city}
+                      </span>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="whitespace-nowrap text-right tabular-nums">
                       {unitCount}
                     </TableCell>
                   </TableRow>

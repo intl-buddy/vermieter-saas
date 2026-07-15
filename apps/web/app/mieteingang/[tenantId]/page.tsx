@@ -239,7 +239,9 @@ export default async function MieteingangDetailPage({
               <TableBody>
                 {payments.map((payment) => (
                   <TableRow key={payment.id}>
-                    <TableCell>{formatDate(payment.paid_at)}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {formatDate(payment.paid_at)}
+                    </TableCell>
                     <TableCell
                       className={`text-right font-semibold tabular-nums ${
                         payment.amount < 0
@@ -249,14 +251,24 @@ export default async function MieteingangDetailPage({
                     >
                       {formatCurrency(payment.amount)}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
                       {PAYER_LABELS[payment.payer] ?? payment.payer}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {payment.bank_reference || "–"}
+                      <span
+                        className="block max-w-[200px] truncate"
+                        title={payment.bank_reference ?? undefined}
+                      >
+                        {payment.bank_reference || "–"}
+                      </span>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {payment.notes || "–"}
+                      <span
+                        className="block max-w-[200px] truncate"
+                        title={payment.notes ?? undefined}
+                      >
+                        {payment.notes || "–"}
+                      </span>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -288,10 +300,12 @@ export default async function MieteingangDetailPage({
               <TableHeader>
                 <TableRow>
                   <TableHead>Stufe</TableHead>
-                  <TableHead>Datum</TableHead>
+                  <TableHead className="whitespace-nowrap">Datum</TableHead>
                   <TableHead className="text-right">Betrag</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Aktionen</TableHead>
+                  <TableHead className="sticky right-0 z-10 border-l border-neutral-100 bg-white">
+                    Aktionen
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -302,20 +316,25 @@ export default async function MieteingangDetailPage({
                     variant: "neutral" as BadgeVariant,
                   };
                   return (
-                    <TableRow key={letter.id}>
-                      <TableCell>
-                        <Badge variant={level.variant}>{level.label}</Badge>
+                    <TableRow key={letter.id} className="group">
+                      <TableCell className="whitespace-nowrap">
+                        <Badge
+                          variant={level.variant}
+                          title={level.label}
+                        >
+                          Stufe {letter.level}
+                        </Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
                         {formatDate(letter.issued_at)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {formatCurrency(letter.amount_due + letter.fee)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         <Badge variant={status.variant}>{status.label}</Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="sticky right-0 z-10 border-l border-neutral-100 bg-white group-hover:bg-neutral-50">
                         <div className="flex flex-wrap items-center gap-2">
                           <Button
                             asChild
