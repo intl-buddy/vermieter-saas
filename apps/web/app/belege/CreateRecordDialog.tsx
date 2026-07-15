@@ -4,12 +4,12 @@ import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
-import { createRecord, type RecordState } from "./actions";
 import {
-  COST_TYPE_OPTIONS,
-  ALLOCATION_OPTIONS,
-  VAT_RATES,
-} from "./labels";
+  createRecord,
+  updateRecord,
+  type RecordState,
+} from "./actions";
+import { COST_TYPE_OPTIONS, ALLOCATION_OPTIONS, VAT_RATES } from "./labels";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,25 @@ const SELECT_CLS =
 
 export type PropertyOption = { id: string; name: string };
 
+export type RecordValues = {
+  id: string;
+  property_id: string;
+  cost_type: string;
+  vendor: string | null;
+  invoice_number: string | null;
+  invoice_date: string | null;
+  paid_date: string | null;
+  gross_amount: number | null;
+  vat_rate: number | null;
+  amount: number;
+  allocation_key: string;
+  billing_period_start: string;
+  billing_period_end: string;
+  is_apportionable: boolean;
+  receipt_url: string | null;
+  notes: string | null;
+};
+
 function Field({
   label,
   htmlFor,
@@ -48,11 +67,11 @@ function Field({
   );
 }
 
-function SubmitButton() {
+function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending}>
-      {pending ? "Wird gespeichert …" : "Beleg speichern"}
+      {pending ? "Wird gespeichert …" : label}
     </Button>
   );
 }
@@ -61,19 +80,40 @@ export function CreateRecordDialog({
   properties,
   defaultPropertyId,
   trigger,
+  mode = "create",
+  record,
+  open: openProp,
+  onOpenChange,
 }: {
   properties: PropertyOption[];
   defaultPropertyId?: string;
   trigger?: React.ReactNode;
+  mode?: "create" | "edit";
+  record?: RecordValues;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const year = new Date().getFullYear();
-  const [open, setOpen] = useState(false);
-  const [state, formAction] = useActionState(createRecord, initialState);
+  const action = mode === "edit" ? updateRecord : createRecord;
+  const [state, formAction] = useActionState(action, initialState);
 
-  const [gross, setGross] = useState("");
-  const [amount, setAmount] = useState("");
-  const [amountTouched, setAmountTouched] = useState(false);
-  const [apportionable, setApportionable] = useState(true);
+  const isControlled = openProp !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? openProp : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (isControlled) onOpenChange?.(v);
+    else setInternalOpen(v);
+  };
+
+  const uid = record?.id ?? "new";
+  const [gross, setGross] = useState(
+    record?.gross_amount != null ? String(record.gross_amount) : "",
+  );
+  const [amount, setAmount] = useState(record ? String(record.amount) : "");
+  const [amountTouched, setAmountTouched] = useState(mode === "edit");
+  const [apportionable, setApportionable] = useState(
+    record?.is_apportionable ?? true,
+  );
 
   useEffect(() => {
     if (state.error) toast.error(state.error);
@@ -81,23 +121,31 @@ export function CreateRecordDialog({
       toast.success(state.success);
       setOpen(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button>
-            <Plus className="size-4" />
-            Beleg erfassen
-          </Button>
-        )}
-      </DialogTrigger>
+      {!isControlled ? (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button>
+              <Plus className="size-4" />
+              Beleg erfassen
+            </Button>
+          )}
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Beleg erfassen</DialogTitle>
+          <DialogTitle>
+            {mode === "edit" ? "Beleg bearbeiten" : "Beleg erfassen"}
+          </DialogTitle>
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-4">
+          {mode === "edit" && record ? (
+            <input type="hidden" name="id" value={record.id} />
+          ) : null}
           <input
             type="hidden"
             name="is_apportionable"
@@ -105,12 +153,12 @@ export function CreateRecordDialog({
           />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Objekt" htmlFor="rec-property">
+            <Field label="Objekt" htmlFor={`${uid}-property`}>
               <select
-                id="rec-property"
+                id={`${uid}-property`}
                 name="property_id"
                 required
-                defaultValue={defaultPropertyId ?? ""}
+                defaultValue={record?.property_id ?? defaultPropertyId ?? ""}
                 className={SELECT_CLS}
               >
                 <option value="" disabled>
@@ -124,11 +172,11 @@ export function CreateRecordDialog({
               </select>
             </Field>
 
-            <Field label="Kostenart" htmlFor="rec-costtype">
+            <Field label="Kostenart" htmlFor={`${uid}-costtype`}>
               <select
-                id="rec-costtype"
+                id={`${uid}-costtype`}
                 name="cost_type"
-                defaultValue="other_operating_costs"
+                defaultValue={record?.cost_type ?? "other_operating_costs"}
                 className={SELECT_CLS}
               >
                 {COST_TYPE_OPTIONS.map((o) => (
@@ -139,25 +187,49 @@ export function CreateRecordDialog({
               </select>
             </Field>
 
-            <Field label="Lieferant (optional)" htmlFor="rec-vendor">
-              <Input id="rec-vendor" name="vendor" />
-            </Field>
-
-            <Field label="Rechnungsnummer (optional)" htmlFor="rec-invnr">
-              <Input id="rec-invnr" name="invoice_number" />
-            </Field>
-
-            <Field label="Rechnungsdatum" htmlFor="rec-invdate">
-              <Input id="rec-invdate" name="invoice_date" type="date" required />
-            </Field>
-
-            <Field label="Zahlungsdatum (optional)" htmlFor="rec-paiddate">
-              <Input id="rec-paiddate" name="paid_date" type="date" />
-            </Field>
-
-            <Field label="Betrag brutto (€)" htmlFor="rec-gross">
+            <Field label="Lieferant (optional)" htmlFor={`${uid}-vendor`}>
               <Input
-                id="rec-gross"
+                id={`${uid}-vendor`}
+                name="vendor"
+                defaultValue={record?.vendor ?? ""}
+              />
+            </Field>
+
+            <Field label="Rechnungsnummer (optional)" htmlFor={`${uid}-invnr`}>
+              <Input
+                id={`${uid}-invnr`}
+                name="invoice_number"
+                defaultValue={record?.invoice_number ?? ""}
+              />
+            </Field>
+
+            <Field label="Rechnungsdatum" htmlFor={`${uid}-invdate`}>
+              <Input
+                id={`${uid}-invdate`}
+                name="invoice_date"
+                type="date"
+                required
+                defaultValue={record?.invoice_date ?? ""}
+              />
+            </Field>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`${uid}-paiddate`}>Zahlungsdatum (optional)</Label>
+              <Input
+                id={`${uid}-paiddate`}
+                name="paid_date"
+                type="date"
+                defaultValue={record?.paid_date ?? ""}
+              />
+              <p className="text-xs text-muted-foreground">
+                Maßgeblich für die EÜR (Jahr der Zahlung). Der Abrechnungszeitraum
+                steuert die Nebenkostenabrechnung.
+              </p>
+            </div>
+
+            <Field label="Betrag brutto (€)" htmlFor={`${uid}-gross`}>
+              <Input
+                id={`${uid}-gross`}
                 name="gross_amount"
                 type="number"
                 min="0"
@@ -171,11 +243,13 @@ export function CreateRecordDialog({
               />
             </Field>
 
-            <Field label="USt-Satz" htmlFor="rec-vat">
+            <Field label="USt-Satz" htmlFor={`${uid}-vat`}>
               <select
-                id="rec-vat"
+                id={`${uid}-vat`}
                 name="vat_rate"
-                defaultValue="19"
+                defaultValue={
+                  record?.vat_rate != null ? String(record.vat_rate) : "19"
+                }
                 className={SELECT_CLS}
               >
                 {VAT_RATES.map((r) => (
@@ -186,9 +260,9 @@ export function CreateRecordDialog({
               </select>
             </Field>
 
-            <Field label="Umlagefähiger Betrag (€)" htmlFor="rec-amount">
+            <Field label="Umlagefähiger Betrag (€)" htmlFor={`${uid}-amount`}>
               <Input
-                id="rec-amount"
+                id={`${uid}-amount`}
                 name="amount"
                 type="number"
                 min="0"
@@ -202,11 +276,11 @@ export function CreateRecordDialog({
               />
             </Field>
 
-            <Field label="Umlageschlüssel" htmlFor="rec-alloc">
+            <Field label="Umlageschlüssel" htmlFor={`${uid}-alloc`}>
               <select
-                id="rec-alloc"
+                id={`${uid}-alloc`}
                 name="allocation_key"
-                defaultValue="living_area"
+                defaultValue={record?.allocation_key ?? "living_area"}
                 className={SELECT_CLS}
               >
                 {ALLOCATION_OPTIONS.map((o) => (
@@ -217,23 +291,23 @@ export function CreateRecordDialog({
               </select>
             </Field>
 
-            <Field label="Abrechnung von" htmlFor="rec-start">
+            <Field label="Abrechnung von" htmlFor={`${uid}-start`}>
               <Input
-                id="rec-start"
+                id={`${uid}-start`}
                 name="billing_period_start"
                 type="date"
                 required
-                defaultValue={`${year}-01-01`}
+                defaultValue={record?.billing_period_start ?? `${year}-01-01`}
               />
             </Field>
 
-            <Field label="Abrechnung bis" htmlFor="rec-end">
+            <Field label="Abrechnung bis" htmlFor={`${uid}-end`}>
               <Input
-                id="rec-end"
+                id={`${uid}-end`}
                 name="billing_period_end"
                 type="date"
                 required
-                defaultValue={`${year}-12-31`}
+                defaultValue={record?.billing_period_end ?? `${year}-12-31`}
               />
             </Field>
           </div>
@@ -245,22 +319,37 @@ export function CreateRecordDialog({
             <Switch checked={apportionable} onCheckedChange={setApportionable} />
           </div>
 
-          <Field label="Notiz (optional)" htmlFor="rec-notes">
-            <Textarea id="rec-notes" name="notes" rows={2} />
+          <Field label="Notiz (optional)" htmlFor={`${uid}-notes`}>
+            <Textarea
+              id={`${uid}-notes`}
+              name="notes"
+              rows={2}
+              defaultValue={record?.notes ?? ""}
+            />
           </Field>
 
-          <Field label="Beleg (PDF/JPG/PNG, max. 10 MB – optional)" htmlFor="rec-file">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`${uid}-file`}>
+              Beleg (PDF/JPG/PNG, max. 10 MB – optional)
+            </Label>
             <input
-              id="rec-file"
+              id={`${uid}-file`}
               name="receipt"
               type="file"
               accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
               className="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-neutral-700 hover:file:bg-neutral-200"
             />
-          </Field>
+            {mode === "edit" && record?.receipt_url ? (
+              <p className="text-xs text-muted-foreground">
+                Es ist bereits ein Beleg hinterlegt. Eine neue Datei ersetzt ihn.
+              </p>
+            ) : null}
+          </div>
 
           <DialogFooter>
-            <SubmitButton />
+            <SubmitButton
+              label={mode === "edit" ? "Änderungen speichern" : "Beleg speichern"}
+            />
           </DialogFooter>
         </form>
       </DialogContent>

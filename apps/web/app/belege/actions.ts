@@ -2,23 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import type { Database } from "@repo/core";
+import type { SupabaseServerClient } from "@/lib/supabase/server";
 import { createClient } from "@/lib/supabase/server";
 import { parseDecimal } from "@/lib/parse";
 import { COST_TYPE_LABELS, ALLOCATION_OPTIONS } from "./labels";
 
 type CostType = Database["public"]["Enums"]["operating_cost_type"];
 type AllocationKey = Database["public"]["Enums"]["allocation_key"];
+type RecordInsert = Database["public"]["Tables"]["operating_costs_records"]["Insert"];
 
 const COST_TYPES = Object.keys(COST_TYPE_LABELS) as CostType[];
 const ALLOCATION_KEYS = ALLOCATION_OPTIONS.map((o) => o.value);
 const VAT_RATES = [0, 7, 19];
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
-const ALLOWED_MIME = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-];
+const ALLOWED_MIME = ["application/pdf", "image/jpeg", "image/png"];
 
 export type RecordState = {
   error?: string;
@@ -31,16 +29,12 @@ function safeFileName(name: string): string {
   return cleaned.slice(-120) || "beleg";
 }
 
-export async function createRecord(
-  _prevState: RecordState,
-  formData: FormData,
-): Promise<RecordState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Bitte melde dich erneut an." };
+type RecordFields = Omit<RecordInsert, "user_id" | "id" | "receipt_url">;
 
+/** Gemeinsame Feldvalidierung für Anlegen und Bearbeiten. */
+function readRecordFields(
+  formData: FormData,
+): { data: RecordFields } | { error: string } {
   const propertyId = String(formData.get("property_id") ?? "").trim();
   const costTypeRaw = String(formData.get("cost_type") ?? "").trim();
   const vendor = String(formData.get("vendor") ?? "").trim();
@@ -66,7 +60,9 @@ export async function createRecord(
     return { error: "Bitte den Abrechnungszeitraum angeben." };
   }
   if (periodEnd <= periodStart) {
-    return { error: "Das Ende des Abrechnungszeitraums muss nach dem Start liegen." };
+    return {
+      error: "Das Ende des Abrechnungszeitraums muss nach dem Start liegen.",
+    };
   }
 
   const gross = grossRaw ? parseDecimal(grossRaw) : null;
@@ -88,11 +84,8 @@ export async function createRecord(
     ? (allocationRaw as AllocationKey)
     : "living_area";
 
-  // 1) Datensatz anlegen (noch ohne Beleg-URL)
-  const { data: inserted, error: insertError } = await supabase
-    .from("operating_costs_records")
-    .insert({
-      user_id: user.id,
+  return {
+    data: {
       property_id: propertyId,
       cost_type: costTypeRaw as CostType,
       allocation_key: allocationKey,
@@ -107,7 +100,49 @@ export async function createRecord(
       invoice_date: invoiceDate,
       paid_date: paidDate || null,
       notes: notes || null,
-    })
+    },
+  };
+}
+
+/** Beleg-Datei in den privaten Bucket laden. Gibt Pfad oder Hinweistext zurück. */
+async function uploadReceipt(
+  supabase: SupabaseServerClient,
+  userId: string,
+  recordId: string,
+  file: File,
+): Promise<{ path?: string; message?: string }> {
+  if (file.size > MAX_FILE_BYTES) {
+    return { message: "die Datei ist zu groß (max. 10 MB)" };
+  }
+  if (!ALLOWED_MIME.includes(file.type)) {
+    return { message: "der Dateityp wird nicht unterstützt (nur PDF, JPG, PNG)" };
+  }
+  const path = `${userId}/${recordId}/${safeFileName(file.name)}`;
+  const { error } = await supabase.storage
+    .from("receipts")
+    .upload(path, file, { contentType: file.type, upsert: true });
+  if (error) {
+    return { message: `die Datei konnte nicht hochgeladen werden: ${error.message}` };
+  }
+  return { path };
+}
+
+export async function createRecord(
+  _prevState: RecordState,
+  formData: FormData,
+): Promise<RecordState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Bitte melde dich erneut an." };
+
+  const fields = readRecordFields(formData);
+  if ("error" in fields) return { error: fields.error };
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("operating_costs_records")
+    .insert({ user_id: user.id, ...fields.data })
     .select("id")
     .single();
 
@@ -117,38 +152,107 @@ export async function createRecord(
     };
   }
 
-  // 2) Optionaler Datei-Upload in den privaten Bucket „receipts"
   const file = formData.get("receipt");
   if (file instanceof File && file.size > 0) {
-    if (file.size > MAX_FILE_BYTES) {
-      return {
-        success:
-          "Beleg gespeichert, aber die Datei ist zu groß (max. 10 MB). Bitte kleiner hochladen.",
-      };
-    }
-    if (!ALLOWED_MIME.includes(file.type)) {
-      return {
-        success:
-          "Beleg gespeichert, aber der Dateityp wird nicht unterstützt (nur PDF, JPG, PNG).",
-      };
-    }
-    const path = `${user.id}/${inserted.id}/${safeFileName(file.name)}`;
-    const { error: uploadError } = await supabase.storage
-      .from("receipts")
-      .upload(path, file, { contentType: file.type, upsert: true });
-
-    if (uploadError) {
-      return {
-        success: `Beleg gespeichert, aber die Datei konnte nicht hochgeladen werden: ${uploadError.message}`,
-      };
+    const result = await uploadReceipt(supabase, user.id, inserted.id, file);
+    if (result.message) {
+      return { success: `Beleg gespeichert, aber ${result.message}.` };
     }
     await supabase
       .from("operating_costs_records")
-      .update({ receipt_url: path })
+      .update({ receipt_url: result.path })
       .eq("id", inserted.id);
   }
 
   revalidatePath("/belege");
-  revalidatePath(`/objekte/${propertyId}`);
+  revalidatePath(`/objekte/${fields.data.property_id}`);
   return { success: "Beleg wurde gespeichert." };
+}
+
+export async function updateRecord(
+  _prevState: RecordState,
+  formData: FormData,
+): Promise<RecordState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Bitte melde dich erneut an." };
+
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return { error: "Beleg konnte nicht ermittelt werden." };
+
+  const fields = readRecordFields(formData);
+  if ("error" in fields) return { error: fields.error };
+
+  // Bestehenden Beleg (Datei-Pfad) laden – für ggf. Ersetzen der Datei.
+  const { data: existing } = await supabase
+    .from("operating_costs_records")
+    .select("receipt_url")
+    .eq("id", id)
+    .maybeSingle();
+
+  const { error: updateError } = await supabase
+    .from("operating_costs_records")
+    .update(fields.data)
+    .eq("id", id);
+
+  if (updateError) {
+    return { error: `Speichern fehlgeschlagen: ${updateError.message}` };
+  }
+
+  // Neue Datei ersetzt die alte im Storage.
+  const file = formData.get("receipt");
+  if (file instanceof File && file.size > 0) {
+    const result = await uploadReceipt(supabase, user.id, id, file);
+    if (result.message) {
+      return { success: `Änderungen gespeichert, aber ${result.message}.` };
+    }
+    const oldPath = existing?.receipt_url ?? null;
+    if (oldPath && oldPath !== result.path) {
+      await supabase.storage.from("receipts").remove([oldPath]);
+    }
+    await supabase
+      .from("operating_costs_records")
+      .update({ receipt_url: result.path })
+      .eq("id", id);
+  }
+
+  revalidatePath("/belege");
+  revalidatePath(`/objekte/${fields.data.property_id}`);
+  return { success: "Beleg wurde aktualisiert." };
+}
+
+/** Beleg samt zugehöriger Datei dauerhaft löschen. */
+export async function deleteRecord(id: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Bitte melde dich erneut an." };
+
+  const { data: existing } = await supabase
+    .from("operating_costs_records")
+    .select("receipt_url, property_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (existing?.receipt_url) {
+    await supabase.storage.from("receipts").remove([existing.receipt_url]);
+  }
+
+  const { error } = await supabase
+    .from("operating_costs_records")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    return { error: `Löschen fehlgeschlagen: ${error.message}` };
+  }
+
+  revalidatePath("/belege");
+  if (existing?.property_id) {
+    revalidatePath(`/objekte/${existing.property_id}`);
+  }
+  return {};
 }

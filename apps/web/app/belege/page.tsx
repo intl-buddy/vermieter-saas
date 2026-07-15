@@ -16,7 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CreateRecordDialog } from "./CreateRecordDialog";
+import { CreateRecordDialog, type RecordValues } from "./CreateRecordDialog";
+import { RecordRowActions } from "./RecordRowActions";
 import { EuerExport } from "./EuerExport";
 import { COST_TYPE_LABELS, COST_TYPE_OPTIONS } from "./labels";
 
@@ -64,7 +65,7 @@ export default async function BelegePage({
   let query = supabase
     .from("operating_costs_records")
     .select(
-      "id, invoice_date, cost_type, vendor, amount, gross_amount, is_apportionable, receipt_url, property_id, properties(name)",
+      "id, invoice_date, invoice_number, paid_date, cost_type, vendor, amount, gross_amount, vat_rate, allocation_key, billing_period_start, billing_period_end, is_apportionable, receipt_url, notes, property_id, properties(name)",
     );
   if (objekt) query = query.eq("property_id", objekt);
   if (kostenart) query = query.eq("cost_type", kostenart);
@@ -73,10 +74,13 @@ export default async function BelegePage({
       .gte("invoice_date", `${jahr}-01-01`)
       .lte("invoice_date", `${jahr}-12-31`);
   }
-  const { data: records } = await query.order("invoice_date", {
-    ascending: false,
-    nullsFirst: false,
-  });
+  const [{ data: records }, { count: missingCount }] = await Promise.all([
+    query.order("invoice_date", { ascending: false, nullsFirst: false }),
+    supabase
+      .from("operating_costs_records")
+      .select("id", { count: "exact", head: true })
+      .is("paid_date", null),
+  ]);
 
   // Signierte Download-URLs für vorhandene Belege
   const downloadUrls = new Map<string, string>();
@@ -103,7 +107,7 @@ export default async function BelegePage({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <EuerExport currentYear={currentYear} />
+          <EuerExport currentYear={currentYear} missingCount={missingCount ?? 0} />
           <CreateRecordDialog
             properties={properties ?? []}
             defaultPropertyId={objekt || undefined}
@@ -193,14 +197,34 @@ export default async function BelegePage({
                 <TableHead>Objekt</TableHead>
                 <TableHead>Lieferant</TableHead>
                 <TableHead className="text-right">Betrag</TableHead>
+                <TableHead>EÜR-Jahr</TableHead>
                 <TableHead>Umlage</TableHead>
                 <TableHead className="text-right">Beleg</TableHead>
+                <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {records.map((r) => {
                 const property = r.properties as { name: string } | null;
                 const url = downloadUrls.get(r.id);
+                const values: RecordValues = {
+                  id: r.id,
+                  property_id: r.property_id,
+                  cost_type: r.cost_type,
+                  vendor: r.vendor,
+                  invoice_number: r.invoice_number,
+                  invoice_date: r.invoice_date,
+                  paid_date: r.paid_date,
+                  gross_amount: r.gross_amount,
+                  vat_rate: r.vat_rate,
+                  amount: r.amount,
+                  allocation_key: r.allocation_key,
+                  billing_period_start: r.billing_period_start,
+                  billing_period_end: r.billing_period_end,
+                  is_apportionable: r.is_apportionable,
+                  receipt_url: r.receipt_url,
+                  notes: r.notes,
+                };
                 return (
                   <TableRow key={r.id}>
                     <TableCell>{formatDate(r.invoice_date)}</TableCell>
@@ -213,6 +237,15 @@ export default async function BelegePage({
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatCurrency(r.gross_amount ?? r.amount)}
+                    </TableCell>
+                    <TableCell>
+                      {r.paid_date ? (
+                        <span className="tabular-nums">
+                          {r.paid_date.slice(0, 4)}
+                        </span>
+                      ) : (
+                        <Badge variant="warning">Zahlungsdatum fehlt</Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       {r.is_apportionable ? (
@@ -235,6 +268,12 @@ export default async function BelegePage({
                       ) : (
                         <span className="text-neutral-300">–</span>
                       )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <RecordRowActions
+                        record={values}
+                        properties={properties ?? []}
+                      />
                     </TableCell>
                   </TableRow>
                 );
