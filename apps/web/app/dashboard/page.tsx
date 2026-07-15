@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Building2, Euro, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -41,6 +42,7 @@ export default async function DashboardPage() {
       label: "Objekte gesamt",
       value: String(objekteCount),
       icon: Building2,
+      href: "/objekte",
       tone: "text-secondary-700",
       iconBg: "bg-secondary-100 text-secondary-700",
     },
@@ -48,6 +50,7 @@ export default async function DashboardPage() {
       label: "Offene Posten",
       value: formatCurrency(openTotal),
       icon: Euro,
+      href: "/mieteingang",
       tone: "text-foreground",
       iconBg: "bg-primary-100 text-primary-700",
     },
@@ -55,6 +58,7 @@ export default async function DashboardPage() {
       label: "Mieter im Rückstand",
       value: String(arrearsCount),
       icon: Users,
+      href: "/mieteingang",
       tone: arrearsCount > 0 ? "text-danger-600" : "text-foreground",
       iconBg:
         arrearsCount > 0
@@ -78,29 +82,28 @@ export default async function DashboardPage() {
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <Card
-              key={kpi.label}
-              className="border-t-2 border-t-gold-400"
-            >
-              <CardContent className="flex flex-col gap-3 p-5">
-                <span
-                  className={cn(
-                    "flex size-10 items-center justify-center rounded-xl",
-                    kpi.iconBg,
-                  )}
-                >
-                  <Icon className="size-5" />
-                </span>
-                <div>
-                  <div className={cn("text-2xl font-bold", kpi.tone)}>
-                    {kpi.value}
+            <Link key={kpi.label} href={kpi.href} className="block">
+              <Card className="h-full border-t-2 border-t-gold-400 transition-all hover:-translate-y-0.5 hover:shadow-md">
+                <CardContent className="flex flex-col gap-3 p-5">
+                  <span
+                    className={cn(
+                      "flex size-10 items-center justify-center rounded-xl",
+                      kpi.iconBg,
+                    )}
+                  >
+                    <Icon className="size-5" />
+                  </span>
+                  <div>
+                    <div className={cn("text-2xl font-bold", kpi.tone)}>
+                      {kpi.value}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {kpi.label}
+                    </div>
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {kpi.label}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           );
         })}
       </div>

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { EinstellungenForm } from "./EinstellungenForm";
+import { KontoSection } from "./KontoSection";
 
 export const metadata = { title: "Einstellungen · tefter" };
 
@@ -50,6 +51,14 @@ export default async function EinstellungenPage() {
       </div>
 
       <EinstellungenForm profile={values} />
+
+      <div className="mt-10">
+        <h2 className="text-xl font-bold tracking-tight">Konto</h2>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">
+          E-Mail-Adresse und Passwort ändern.
+        </p>
+        <KontoSection userEmail={user.email ?? ""} />
+      </div>
     </AppShell>
   );
 }

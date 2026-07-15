@@ -1,5 +1,6 @@
 import { BottomNav } from "@/components/bottom-nav";
 import { UserMenu } from "@/components/user-menu";
+import { FooterLinks } from "@/components/footer-links";
 
 /**
  * Grundgerüst für eingeloggte Seiten: schlanke Topbar oben, fixierte
@@ -42,6 +43,7 @@ export function AppShell({
 
       <main className="mx-auto max-w-4xl px-4 pt-[76px] pb-[calc(92px+env(safe-area-inset-bottom))]">
         {children}
+        <FooterLinks className="mt-10" />
       </main>
 
       <BottomNav />
