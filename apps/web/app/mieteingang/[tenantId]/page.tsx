@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { PaymentForm } from "./PaymentForm";
 import { MarkSentButton } from "./MarkSentButton";
+import { SendDunningDialog } from "./SendDunningDialog";
 
 type PayerType = Database["public"]["Enums"]["payer_type"];
 type DunningStatus = Database["public"]["Enums"]["dunning_status"];
@@ -68,7 +69,7 @@ export default async function MieteingangDetailPage({
   // Mieter laden (dient auch als Zugriffs-/Existenzprüfung via RLS).
   const { data: tenant } = await supabase
     .from("tenants")
-    .select("id, first_name, last_name")
+    .select("id, first_name, last_name, email")
     .eq("id", tenantId)
     .maybeSingle();
 
@@ -351,10 +352,18 @@ export default async function MieteingangDetailPage({
                             </a>
                           </Button>
                           {letter.status === "draft" ? (
-                            <MarkSentButton
-                              dunningId={letter.id}
-                              tenantId={tenantId}
-                            />
+                            <>
+                              <SendDunningDialog
+                                dunningId={letter.id}
+                                level={letter.level}
+                                amountTotal={letter.amount_due + letter.fee}
+                                tenantEmail={tenant.email}
+                              />
+                              <MarkSentButton
+                                dunningId={letter.id}
+                                tenantId={tenantId}
+                              />
+                            </>
                           ) : null}
                         </div>
                       </TableCell>
