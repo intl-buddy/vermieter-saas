@@ -12,6 +12,40 @@ export type AuthState = {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Zieladresse des Passwort-Zurücksetzen-Links (Produktions-URL). */
+const PASSWORD_RESET_REDIRECT = "https://app.tefter.de/passwort-zuruecksetzen";
+
+/**
+ * Fordert eine E-Mail zum Zurücksetzen des Passworts an. Gibt aus
+ * Sicherheitsgründen IMMER dieselbe neutrale Meldung zurück – unabhängig davon,
+ * ob die Adresse existiert –, damit sich registrierte E-Mails nicht per
+ * Formular erraten lassen.
+ */
+export async function requestPasswordReset(
+  _prevState: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const email = String(formData.get("email") ?? "").trim();
+
+  if (!email) {
+    return { error: "Bitte gib deine E-Mail-Adresse ein." };
+  }
+  if (!EMAIL_REGEX.test(email)) {
+    return { error: "Bitte gib eine gültige E-Mail-Adresse ein." };
+  }
+
+  const supabase = await createClient();
+  // Fehler bewusst nicht an den Nutzer weitergeben (keine Existenz-Preisgabe).
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: PASSWORD_RESET_REDIRECT,
+  });
+
+  return {
+    message:
+      "Falls ein Konto mit dieser Adresse existiert, haben wir dir einen Link geschickt.",
+  };
+}
+
 /**
  * Meldet einen bestehenden Nutzer mit E-Mail und Passwort an.
  */

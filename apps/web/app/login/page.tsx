@@ -67,6 +67,14 @@ export default function LoginPage() {
                 required
                 placeholder="••••••••"
               />
+              <div className="text-right">
+                <Link
+                  href="/passwort-vergessen"
+                  className="text-sm font-medium text-secondary hover:underline"
+                >
+                  Passwort vergessen?
+                </Link>
+              </div>
             </div>
             <SubmitButton />
           </form>
