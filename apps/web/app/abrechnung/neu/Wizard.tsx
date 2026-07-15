@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Check, Info } from "lucide-react";
 import { toast } from "sonner";
 import {
   calculateBilling,
@@ -26,6 +27,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { UMLAGEFAEHIGE_KOSTENARTEN } from "./costTypeInfo";
 import { cn } from "@/lib/utils";
 
 const STEPS = [
@@ -88,6 +95,12 @@ export function Wizard({
     setHeating(Object.fromEntries(res.tenancies.map((t) => [t.tenant_id, "0"])));
     setPersonPeriods(res.personPeriods);
     setStep(2);
+  }
+
+  async function reloadData() {
+    if (!objektId || !von || !bis) return;
+    const res = await loadWizardData(objektId, von, bis);
+    if (!("error" in res)) setData(res);
   }
 
   const heatingNumbers = useMemo(() => {
@@ -220,7 +233,13 @@ export function Wizard({
 
       {step >= 2 && data ? (
         <div>
-          {step === 2 ? <StepBelege data={data} objektId={objektId} /> : null}
+          {step === 2 ? (
+            <StepBelege
+              data={data}
+              objektId={objektId}
+              onRecordsChanged={reloadData}
+            />
+          ) : null}
           {step === 3 ? (
             <StepHeizkosten
               data={data}
@@ -359,10 +378,15 @@ function StepObjekt(props: {
 function StepBelege({
   data,
   objektId,
+  onRecordsChanged,
 }: {
   data: WizardData;
   objektId: string;
+  onRecordsChanged: () => void;
 }) {
+  const [ctOpen, setCtOpen] = useState(false);
+  const [selectedCt, setSelectedCt] = useState<string | undefined>(undefined);
+
   const groups = useMemo(() => {
     const map = new Map<string, WizardData["records"]>();
     for (const r of data.records) {
@@ -373,70 +397,169 @@ function StepBelege({
     return [...map.entries()];
   }, [data.records]);
 
+  const presentTypes = useMemo(
+    () => new Set(data.records.map((r) => r.cost_type)),
+    [data.records],
+  );
+  const year = data.periodStart.slice(0, 4);
+  const propertyOptions = [{ id: data.property.id, name: data.property.name }];
+
+  function openForCostType(key: string) {
+    setSelectedCt(key);
+    setCtOpen(true);
+  }
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          Alle Belege mit Überschneidung zum Zeitraum, gruppiert nach Kostenart.
-        </p>
-        <div className="flex gap-2">
-          <CreateRecordDialog
-            properties={[{ id: data.property.id, name: data.property.name }]}
-            defaultPropertyId={objektId}
-          />
-          <Button asChild variant="outline">
-            <Link href={`/belege?objekt=${objektId}`}>Belege verwalten</Link>
-          </Button>
+    <div>
+      <div className="flex flex-col gap-6 lg:flex-row">
+        {/* Belegliste */}
+        <div className="flex flex-1 flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              Alle Belege mit Überschneidung zum Zeitraum, gruppiert nach
+              Kostenart.
+            </p>
+            <div className="flex gap-2">
+              <CreateRecordDialog
+                properties={propertyOptions}
+                defaultPropertyId={objektId}
+                onCreated={onRecordsChanged}
+              />
+              <Button asChild variant="outline">
+                <Link href={`/belege?objekt=${objektId}`}>Belege verwalten</Link>
+              </Button>
+            </div>
+          </div>
+
+          {data.records.length === 0 ? (
+            <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-muted-foreground">
+              Für diesen Zeitraum sind noch keine Belege erfasst.
+            </div>
+          ) : (
+            groups.map(([type, recs]) => (
+              <Card key={type}>
+                <CardContent className="p-4">
+                  <div className="mb-2 font-semibold">{costLabel(type)}</div>
+                  <div className="flex flex-col gap-1.5">
+                    {recs.map((r) => {
+                      const directNoUnit =
+                        r.allocation_key === "direct" && !r.unit_id;
+                      return (
+                        <div
+                          key={r.id}
+                          className={cn(
+                            "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm",
+                            r.is_apportionable
+                              ? "border-neutral-200"
+                              : "border-neutral-200 bg-neutral-50 text-neutral-400",
+                          )}
+                        >
+                          <span>
+                            {formatCurrency(r.amount)} ·{" "}
+                            {ALLOCATION_LABELS[
+                              r.allocation_key as keyof typeof ALLOCATION_LABELS
+                            ] ?? r.allocation_key}
+                          </span>
+                          <span className="flex items-center gap-2">
+                            {!r.is_apportionable ? (
+                              <Badge variant="neutral">nicht umlagefähig</Badge>
+                            ) : null}
+                            {directNoUnit ? (
+                              <Badge variant="warning">
+                                Direktzuordnung ohne Einheit
+                              </Badge>
+                            ) : null}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* Kostenarten-Checkliste */}
+        <div className="lg:w-80 lg:shrink-0">
+          <Card>
+            <CardContent className="p-4">
+              <div className="mb-3 font-semibold">Kostenarten {year}</div>
+              <ul className="flex flex-col gap-0.5">
+                {UMLAGEFAEHIGE_KOSTENARTEN.map((ct) => {
+                  const checked = presentTypes.has(ct.key);
+                  return (
+                    <li key={ct.key} className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!checked) openForCostType(ct.key);
+                        }}
+                        disabled={checked}
+                        className={cn(
+                          "flex flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors",
+                          checked
+                            ? "text-neutral-400"
+                            : "hover:bg-neutral-50",
+                        )}
+                      >
+                        {checked ? (
+                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success-50 text-success-600">
+                            <Check className="size-3.5" />
+                          </span>
+                        ) : (
+                          <span className="size-5 shrink-0 rounded-full border border-neutral-300" />
+                        )}
+                        <span className={cn(checked && "line-through")}>
+                          {ct.label}
+                        </span>
+                      </button>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={`Info zu ${ct.label}`}
+                            className="flex size-6 shrink-0 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+                          >
+                            <Info className="size-3.5" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end">
+                          <div className="mb-1 font-semibold text-foreground">
+                            {ct.label}
+                          </div>
+                          <p className="text-muted-foreground">{ct.info}</p>
+                        </PopoverContent>
+                      </Popover>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="mt-3 border-t border-neutral-100 pt-3 text-xs text-muted-foreground">
+                Nicht jede Kostenart fällt in jedem Objekt an – die Liste ist eine
+                Gedankenstütze, keine Pflicht.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
       {data.records.length === 0 ? (
-        <div className="rounded-lg border border-warning-100 bg-warning-50 px-4 py-3 text-sm text-warning-700">
-          Für diesen Zeitraum sind keine Belege erfasst. Lege zuerst Belege an.
+        <div className="mt-6 rounded-lg border border-warning-100 bg-warning-50 px-4 py-3 text-sm text-warning-700">
+          Ohne Belege wird eine leere Abrechnung erstellt.
         </div>
-      ) : (
-        groups.map(([type, recs]) => (
-          <Card key={type}>
-            <CardContent className="p-4">
-              <div className="mb-2 font-semibold">{costLabel(type)}</div>
-              <div className="flex flex-col gap-1.5">
-                {recs.map((r) => {
-                  const directNoUnit =
-                    r.allocation_key === "direct" && !r.unit_id;
-                  return (
-                    <div
-                      key={r.id}
-                      className={cn(
-                        "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm",
-                        r.is_apportionable
-                          ? "border-neutral-200"
-                          : "border-neutral-200 bg-neutral-50 text-neutral-400",
-                      )}
-                    >
-                      <span>
-                        {formatCurrency(r.amount)} ·{" "}
-                        {ALLOCATION_LABELS[
-                          r.allocation_key as keyof typeof ALLOCATION_LABELS
-                        ] ?? r.allocation_key}
-                      </span>
-                      <span className="flex items-center gap-2">
-                        {!r.is_apportionable ? (
-                          <Badge variant="neutral">nicht umlagefähig</Badge>
-                        ) : null}
-                        {directNoUnit ? (
-                          <Badge variant="warning">
-                            Direktzuordnung ohne Einheit
-                          </Badge>
-                        ) : null}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        ))
-      )}
+      ) : null}
+
+      {/* Beleg-Dialog mit vorausgewählter Kostenart (Checklisten-Klick) */}
+      <CreateRecordDialog
+        key={selectedCt ?? "none"}
+        properties={propertyOptions}
+        defaultPropertyId={objektId}
+        defaultCostType={selectedCt}
+        onCreated={onRecordsChanged}
+        open={ctOpen}
+        onOpenChange={setCtOpen}
+      />
     </div>
   );
 }

@@ -82,6 +82,8 @@ export function CreateRecordDialog({
   trigger,
   mode = "create",
   record,
+  defaultCostType,
+  onCreated,
   open: openProp,
   onOpenChange,
 }: {
@@ -90,6 +92,8 @@ export function CreateRecordDialog({
   trigger?: React.ReactNode;
   mode?: "create" | "edit";
   record?: RecordValues;
+  defaultCostType?: string;
+  onCreated?: () => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -119,6 +123,7 @@ export function CreateRecordDialog({
     if (state.error) toast.error(state.error);
     if (state.success) {
       toast.success(state.success);
+      onCreated?.();
       setOpen(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -176,7 +181,9 @@ export function CreateRecordDialog({
               <select
                 id={`${uid}-costtype`}
                 name="cost_type"
-                defaultValue={record?.cost_type ?? "other_operating_costs"}
+                defaultValue={
+                  record?.cost_type ?? defaultCostType ?? "other_operating_costs"
+                }
                 className={SELECT_CLS}
               >
                 {COST_TYPE_OPTIONS.map((o) => (
