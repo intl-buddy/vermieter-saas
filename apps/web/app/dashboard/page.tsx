@@ -1,11 +1,51 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, Euro, Users, ClipboardList } from "lucide-react";
+import {
+  Building2,
+  Euro,
+  Users,
+  ClipboardList,
+  ClipboardPlus,
+  Receipt,
+  type LucideIcon,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
+import { CreateRecordDialog } from "@/app/belege/CreateRecordDialog";
+import { CreateTaskDialog } from "@/app/aufgaben/CreateTaskDialog";
 import { cn } from "@/lib/utils";
+
+const ACTION_CARD_CLS =
+  "group block w-full rounded-xl border border-neutral-200 border-t-2 border-t-gold-400 bg-white p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md";
+
+function QuickActionContent({
+  icon: Icon,
+  iconBg,
+  title,
+  subtitle,
+}: {
+  icon: LucideIcon;
+  iconBg: string;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <>
+      <span
+        className={cn(
+          "flex size-10 items-center justify-center rounded-xl",
+          iconBg,
+        )}
+      >
+        <Icon className="size-5" />
+      </span>
+      <div className="mt-3 font-semibold text-foreground">{title}</div>
+      <div className="text-sm text-muted-foreground">{subtitle}</div>
+    </>
+  );
+}
 
 export const metadata = { title: "Dashboard · tefter" };
 
@@ -25,18 +65,34 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [{ data: profile }, propertiesCount, { data: balances }, { data: tasks }] =
-    await Promise.all([
-      supabase.from("users").select("full_name").eq("id", user.id).maybeSingle(),
-      supabase
-        .from("properties")
-        .select("id", { count: "exact", head: true }),
-      supabase.from("tenant_balances").select("balance"),
-      supabase
-        .from("generated_tasks")
-        .select("status, due_date")
-        .in("status", ["open", "overdue"]),
-    ]);
+  const [
+    { data: profile },
+    propertiesCount,
+    { data: balances },
+    { data: tasks },
+    { data: propertyList },
+    { data: unitList },
+  ] = await Promise.all([
+    supabase.from("users").select("full_name").eq("id", user.id).maybeSingle(),
+    supabase.from("properties").select("id", { count: "exact", head: true }),
+    supabase.from("tenant_balances").select("balance"),
+    supabase
+      .from("generated_tasks")
+      .select("status, due_date")
+      .in("status", ["open", "overdue"]),
+    supabase.from("properties").select("id, name").order("name"),
+    supabase.from("units").select("id, label, property_id").order("label"),
+  ]);
+
+  // Optionen für die wiederverwendeten Dialoge (Beleg / Aufgabe)
+  const propertyOptions = propertyList ?? [];
+  const propertyNameById = new Map(propertyOptions.map((p) => [p.id, p.name]));
+  const unitOptions = (unitList ?? []).map((u) => ({
+    id: u.id,
+    label: u.label,
+    property_id: u.property_id,
+    propertyName: propertyNameById.get(u.property_id) ?? null,
+  }));
 
   const firstName =
     profile?.full_name?.trim().split(/\s+/)[0] ||
@@ -135,6 +191,51 @@ export default async function DashboardPage() {
           );
         })}
       </div>
+
+      <section className="mt-10">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Schnellaktionen
+        </h2>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <CreateRecordDialog
+            properties={propertyOptions}
+            trigger={
+              <button type="button" className={ACTION_CARD_CLS}>
+                <QuickActionContent
+                  icon={Receipt}
+                  iconBg="bg-primary-100 text-primary-700"
+                  title="Beleg erfassen"
+                  subtitle="Rechnung hochladen und zuordnen"
+                />
+              </button>
+            }
+          />
+
+          <Link href="/mieteingang" className={ACTION_CARD_CLS}>
+            <QuickActionContent
+              icon={Euro}
+              iconBg="bg-secondary-100 text-secondary-700"
+              title="Zahlung erfassen"
+              subtitle="Mieteingang verbuchen"
+            />
+          </Link>
+
+          <CreateTaskDialog
+            properties={propertyOptions}
+            units={unitOptions}
+            trigger={
+              <button type="button" className={ACTION_CARD_CLS}>
+                <QuickActionContent
+                  icon={ClipboardPlus}
+                  iconBg="bg-gold-100 text-gold-700"
+                  title="Aufgabe anlegen"
+                  subtitle="Einmalige Aufgabe erstellen"
+                />
+              </button>
+            }
+          />
+        </div>
+      </section>
     </AppShell>
   );
 }

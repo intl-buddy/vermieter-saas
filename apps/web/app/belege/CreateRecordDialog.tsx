@@ -60,9 +60,11 @@ function SubmitButton() {
 export function CreateRecordDialog({
   properties,
   defaultPropertyId,
+  trigger,
 }: {
   properties: PropertyOption[];
   defaultPropertyId?: string;
+  trigger?: React.ReactNode;
 }) {
   const year = new Date().getFullYear();
   const [open, setOpen] = useState(false);
@@ -84,10 +86,12 @@ export function CreateRecordDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4" />
-          Beleg erfassen
-        </Button>
+        {trigger ?? (
+          <Button>
+            <Plus className="size-4" />
+            Beleg erfassen
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>

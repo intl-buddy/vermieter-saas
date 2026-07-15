@@ -40,9 +40,11 @@ function SubmitButton() {
 export function CreateTaskDialog({
   properties,
   units,
+  trigger,
 }: {
   properties: PropertyOption[];
   units: UnitOption[];
+  trigger?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(createAdHocTask, initialState);
@@ -58,10 +60,12 @@ export function CreateTaskDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4" />
-          Aufgabe anlegen
-        </Button>
+        {trigger ?? (
+          <Button>
+            <Plus className="size-4" />
+            Aufgabe anlegen
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
