@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { FooterLinks } from "@/components/footer-links";
 
 /**
  * Schlichtes Layout für öffentliche Rechtsseiten (Impressum/Datenschutz):
@@ -35,9 +34,6 @@ export function LegalShell({
         </h1>
         <div className="text-sm leading-relaxed text-neutral-700">
           {children}
-        </div>
-        <div className="mt-12 border-t border-neutral-200 pt-6">
-          <FooterLinks />
         </div>
       </main>
     </div>

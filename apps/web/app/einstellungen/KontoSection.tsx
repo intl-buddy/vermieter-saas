@@ -17,8 +17,8 @@ import { Label } from "@/components/ui/label";
 export function KontoSection({ userEmail }: { userEmail: string }) {
   const [supabase] = useState(() => createClient());
 
-  // E-Mail ändern
-  const [newEmail, setNewEmail] = useState("");
+  // E-Mail ändern (Feld mit aktueller Adresse vorbefüllt)
+  const [newEmail, setNewEmail] = useState(userEmail);
   const [emailPending, setEmailPending] = useState(false);
 
   // Passwort ändern
@@ -47,9 +47,8 @@ export function KontoSection({ userEmail }: { userEmail: string }) {
       return;
     }
     toast.success(
-      "Wir haben dir eine Bestätigungsmail an die neue Adresse geschickt. Die Änderung wird erst nach Bestätigung aktiv.",
+      "Wir haben dir eine Bestätigungsmail an die neue Adresse geschickt. Die Änderung wird erst nach Bestätigung wirksam.",
     );
-    setNewEmail("");
     setEmailPending(false);
   }
 
@@ -97,12 +96,8 @@ export function KontoSection({ userEmail }: { userEmail: string }) {
         </CardHeader>
         <CardContent>
           <form onSubmit={onEmailSubmit} className="flex flex-col gap-4">
-            <p className="text-sm text-muted-foreground">
-              Aktuell:{" "}
-              <span className="font-medium text-foreground">{userEmail}</span>
-            </p>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="new_email">Neue E-Mail-Adresse</Label>
+              <Label htmlFor="new_email">E-Mail-Adresse</Label>
               <Input
                 id="new_email"
                 type="email"

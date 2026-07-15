@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
+import { Separator } from "@/components/ui/separator";
+import { FooterLinks } from "@/components/footer-links";
 import { EinstellungenForm } from "./EinstellungenForm";
 import { KontoSection } from "./KontoSection";
 
@@ -58,6 +60,11 @@ export default async function EinstellungenPage() {
           E-Mail-Adresse und Passwort ändern.
         </p>
         <KontoSection userEmail={user.email ?? ""} />
+      </div>
+
+      <Separator className="mt-12" />
+      <div className="py-6">
+        <FooterLinks className="justify-start" />
       </div>
     </AppShell>
   );
