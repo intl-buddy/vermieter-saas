@@ -78,7 +78,10 @@ export default async function DashboardPage() {
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <Card key={kpi.label}>
+            <Card
+              key={kpi.label}
+              className="border-t-2 border-t-gold-400"
+            >
               <CardContent className="flex flex-col gap-3 p-5">
                 <span
                   className={cn(

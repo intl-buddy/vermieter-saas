@@ -37,7 +37,7 @@ export default function LoginPage() {
 
   return (
     <AuthShell>
-      <Card>
+      <Card className="border-t-4 border-t-gold-400">
         <CardHeader>
           <CardTitle className="text-2xl">Willkommen zurück</CardTitle>
           <CardDescription>

@@ -19,7 +19,7 @@
   --popover-foreground: #14171a;
   --primary: #2a9549; /* Marken-Grün */
   --primary-foreground: #ffffff;
-  --secondary: #352b80; /* Marken-Violett */
+  --secondary: #1e3a8a; /* Marken-Marineblau */
   --secondary-foreground: #ffffff;
   --muted: #eef0f1;
   --muted-foreground: #6b747a;
@@ -46,17 +46,17 @@
   --color-primary-800: #164f27;
   --color-primary-900: #103a1d;
 
-  /* ---- Marken: Secondary Violett ---- */
-  --color-secondary-50: #ecebf6;
-  --color-secondary-100: #d5d2ec;
-  --color-secondary-200: #aba5d9;
-  --color-secondary-300: #8078c4;
-  --color-secondary-400: #574ca6;
-  --color-secondary-500: #352b80;
-  --color-secondary-600: #2e2670;
-  --color-secondary-700: #241e57;
-  --color-secondary-800: #1b1641;
-  --color-secondary-900: #120f2b;
+  /* ---- Marken: Secondary Marineblau ---- */
+  --color-secondary-50: #eef3fb;
+  --color-secondary-100: #d8e2f5;
+  --color-secondary-200: #b0c5eb;
+  --color-secondary-300: #7f9fdc;
+  --color-secondary-400: #4a6fc0;
+  --color-secondary-500: #1e3a8a;
+  --color-secondary-600: #1a327a;
+  --color-secondary-700: #152961;
+  --color-secondary-800: #101f49;
+  --color-secondary-900: #0b1631;
 
   /* ---- Marken: Accent Gold (nur Badges/Icons/Highlights) ---- */
   --color-gold-50: #faf6ec;

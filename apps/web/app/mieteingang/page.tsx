@@ -105,6 +105,8 @@ export default async function MieteingangPage() {
                         <Badge variant="danger">
                           {formatCurrency(row.balance)}
                         </Badge>
+                      ) : row.balance === 0 ? (
+                        <Badge variant="gold">Alles bezahlt</Badge>
                       ) : (
                         <span className="text-success-700">
                           {formatCurrency(row.balance)}

@@ -21,6 +21,10 @@ export function AppShell({
         <div className="mx-auto flex h-full max-w-4xl items-center gap-3 px-4">
           <span className="text-lg font-extrabold tracking-tight text-secondary">
             tefter
+            <span
+              className="ml-0.5 inline-block size-1.5 rounded-full bg-gold-500 align-baseline"
+              aria-hidden
+            />
           </span>
           {title ? (
             <>
