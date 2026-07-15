@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import {
   calculateBilling,
+  computeOccupancy,
+  daysInclusive,
   type AllocationKey,
   type BillingInput,
   type CostRecordInput,
@@ -11,11 +13,12 @@ import {
 } from "@repo/core";
 import { createClient } from "@/lib/supabase/server";
 import { renderBillingStatementPdf } from "@/lib/pdf/billingStatement";
-import { COST_TYPE_LABELS, ALLOCATION_LABELS } from "@/app/belege/labels";
+import { COST_TYPE_LABELS } from "@/app/belege/labels";
 
 export type WizardUnit = {
   id: string;
   label: string;
+  floor: string | null;
   living_area: number | null;
   ownership_share: number | null;
 };
@@ -86,7 +89,7 @@ async function assembleData(
 
   const { data: units } = await supabase
     .from("units")
-    .select("id, label, living_area, ownership_share")
+    .select("id, label, floor, living_area, ownership_share")
     .eq("property_id", propertyId)
     .order("label");
   const unitList = units ?? [];
@@ -340,15 +343,70 @@ export async function finalizeBilling(
   }
 
   const tenancyById = new Map(data.tenancies.map((t) => [t.tenant_id, t]));
+  const unitById = new Map(data.units.map((u) => [u.id, u]));
   const issueDate = todayIso();
   const deadline = addDaysIso(issueDate, 30);
 
+  // Objekt-Verteilgrundlagen für das PDF
+  const periodDays = daysInclusive(payload.periodStart, payload.periodEnd);
+  const gesamtWohnflaeche = data.units.reduce(
+    (s, u) => s + (u.living_area ?? 0),
+    0,
+  );
+  const flaechentageGesamt = gesamtWohnflaeche * periodDays;
+  const repPersonsByUnit = new Map<string, number>();
+  for (const t of data.tenancies) {
+    const prev = repPersonsByUnit.get(t.unit_id) ?? 0;
+    if (t.persons_count > prev) repPersonsByUnit.set(t.unit_id, t.persons_count);
+  }
+  const personentageGesamt = data.units.reduce(
+    (s, u) => s + (repPersonsByUnit.get(u.id) ?? 0) * periodDays,
+    0,
+  );
+  const usedArea = data.records.some(
+    (r) =>
+      r.is_apportionable &&
+      (r.allocation_key === "living_area" ||
+        r.allocation_key === "consumption"),
+  );
+  const usedPersons = data.records.some(
+    (r) => r.is_apportionable && r.allocation_key === "persons",
+  );
+
   for (const st of result.statements) {
     const t = tenancyById.get(st.tenant_id);
-    const positions = st.positions.map((p) => ({
-      cost_type: COST_TYPE_LABELS[p.cost_type as keyof typeof COST_TYPE_LABELS] ?? p.cost_type,
-      allocation: ALLOCATION_LABELS[p.allocation_key] ?? p.allocation_key,
+    const unit = t ? unitById.get(t.unit_id) : undefined;
+    const occ = t
+      ? computeOccupancy(
+          {
+            tenant_id: t.tenant_id,
+            unit_id: t.unit_id,
+            move_in: t.move_in,
+            move_out: t.move_out,
+            persons_count: t.persons_count,
+          },
+          payload.periodStart,
+          payload.periodEnd,
+        )
+      : null;
+    const periods = payload.personPeriods[st.tenant_id];
+    const personsDisplay =
+      periods && periods.length > 1
+        ? "wechselnd"
+        : String(t?.persons_count ?? 0);
+    const unitArea = unit?.living_area ?? 0;
+
+    // Snapshot mit vollem Rechenweg (defensiv: neue Läufe haben alle Felder)
+    const snapshot = st.positions.map((p) => ({
+      cost_type: p.cost_type,
+      cost_label:
+        COST_TYPE_LABELS[p.cost_type as keyof typeof COST_TYPE_LABELS] ??
+        p.cost_type,
+      allocation_key: p.allocation_key,
       total_cost: p.total_cost,
+      basis_total: p.basis_total,
+      basis_tenant: p.basis_tenant,
+      unit_price: p.unit_price,
       share: p.share,
     }));
 
@@ -366,7 +424,7 @@ export async function finalizeBilling(
         balance: st.balance,
         labor_35a_household: st.labor_35a_household,
         labor_35a_craftsman: st.labor_35a_craftsman,
-        line_items: positions,
+        line_items: snapshot,
       })
       .select("id")
       .single();
@@ -388,16 +446,37 @@ export async function finalizeBilling(
         zipCity: `${data.property.zip} ${data.property.city}`.trim(),
       },
       objekt: data.property.name,
-      einheit: t?.unit_label ?? "",
       periodStart: payload.periodStart,
       periodEnd: payload.periodEnd,
       issueDate,
+      tenant: {
+        unitLabel: t?.unit_label ?? "",
+        floor: unit?.floor ?? null,
+        unitArea,
+        personsDisplay,
+        wohnzeitFrom: occ?.occFrom ?? payload.periodStart,
+        wohnzeitTo: occ?.occTo ?? payload.periodEnd,
+        wohntage: st.occupancy_days,
+        ihreFlaechentage: unitArea * st.occupancy_days,
+        ihrePersonentage: st.person_days,
+      },
+      object: {
+        gesamtWohnflaeche,
+        abrechnungstage: periodDays,
+        flaechentageGesamt,
+        personentageGesamt,
+        usedArea,
+        usedPersons,
+      },
       positions: st.positions.map((p) => ({
-        costType:
+        costLabel:
           COST_TYPE_LABELS[p.cost_type as keyof typeof COST_TYPE_LABELS] ??
           p.cost_type,
         totalCost: p.total_cost,
-        allocationLabel: ALLOCATION_LABELS[p.allocation_key] ?? p.allocation_key,
+        allocationKey: p.allocation_key,
+        basisTotal: p.basis_total,
+        unitPrice: p.unit_price,
+        basisTenant: p.basis_tenant,
         share: p.share,
       })),
       heatingCosts: st.heating_costs,

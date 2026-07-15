@@ -66,6 +66,8 @@ export interface Position {
   total_cost: number;
   basis_tenant: number;
   basis_total: number;
+  /** €/Einheit, ungerundet: total_cost / basis_total. */
+  unit_price: number;
   share: number;
 }
 
@@ -370,6 +372,7 @@ export function calculateBilling(input: BillingInput): BillingResult {
           total_cost: rec.amount,
           basis_tenant: basis,
           basis_total: denom,
+          unit_price: rec.amount / denom,
           share,
         });
         addLabor(st, rec.type_35a, labor);

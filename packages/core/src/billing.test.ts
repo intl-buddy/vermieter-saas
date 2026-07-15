@@ -295,6 +295,22 @@ describe("Null-Sicherheit (nullable Schema-Felder)", () => {
     expect(o.occFrom).toBe(P_START);
   });
 
+  it("Position enthält basis_total, basis_tenant und ungerundeten unit_price", () => {
+    const res = calculateBilling(
+      baseInput({
+        tenancies: [tenancy({ move_in: "2025-01-06" })], // 5 von 10 Tagen
+        records: [record({ amount: 100 })],
+      }),
+    );
+    const pos = res.statements[0].positions[0];
+    expect(pos.basis_total).toBe(1000); // 100 m² × 10 Tage
+    expect(pos.basis_tenant).toBe(500); // 100 m² × 5 Tage
+    expect(pos.unit_price).toBeCloseTo(0.1, 10); // 100 € / 1000, ungerundet
+    // Ihr Anteil = unit_price × Ihre Einheiten, kaufmännisch gerundet
+    expect(roundCent(pos.unit_price * pos.basis_tenant)).toBe(pos.share);
+    expect(pos.share).toBe(50);
+  });
+
   it("laufender Mieter + Beleg (ohne Zahlungsdatum) wird korrekt verteilt", () => {
     const res = calculateBilling(
       baseInput({
