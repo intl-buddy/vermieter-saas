@@ -108,30 +108,50 @@ export interface BillingResult {
 // Datums-/Rundungshilfen
 // --------------------------------------------------------------------------
 
-/** `YYYY-MM-DD` → fortlaufende Tagesnummer (UTC-basiert, zeitzonenfrei). */
-export function toEpochDay(dateStr: string): number {
+/**
+ * `YYYY-MM-DD` → fortlaufende Tagesnummer (UTC-basiert, zeitzonenfrei).
+ * Null/undefined/ungültige Werte ergeben `NaN` (statt einen Fehler zu werfen),
+ * damit nullable Datumsfelder die Berechnung nie zum Absturz bringen.
+ */
+export function toEpochDay(dateStr: string | null | undefined): number {
+  if (typeof dateStr !== "string") return NaN;
   const parts = dateStr.split("-");
+  if (parts.length !== 3) return NaN;
   const y = Number(parts[0]);
   const m = Number(parts[1]);
   const d = Number(parts[2]);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
+    return NaN;
+  }
   return Math.floor(Date.UTC(y, m - 1, d) / 86_400_000);
 }
 
-/** Tage von `from` bis `to` inklusive (0, wenn to < from). */
-export function daysInclusive(from: string, to: string): number {
-  const diff = toEpochDay(to) - toEpochDay(from) + 1;
+/** Tage von `from` bis `to` inklusive (0, wenn ungültig oder to < from). */
+export function daysInclusive(
+  from: string | null | undefined,
+  to: string | null | undefined,
+): number {
+  const a = toEpochDay(from);
+  const b = toEpochDay(to);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return 0;
+  const diff = b - a + 1;
   return diff > 0 ? diff : 0;
 }
 
-/** Überschneidungstage zweier inklusiver Intervalle. */
+/** Überschneidungstage zweier inklusiver Intervalle (0 bei ungültigen Werten). */
 export function overlapDays(
-  aFrom: string,
-  aTo: string,
-  bFrom: string,
-  bTo: string,
+  aFrom: string | null | undefined,
+  aTo: string | null | undefined,
+  bFrom: string | null | undefined,
+  bTo: string | null | undefined,
 ): number {
-  const from = toEpochDay(aFrom) > toEpochDay(bFrom) ? aFrom : bFrom;
-  const to = toEpochDay(aTo) < toEpochDay(bTo) ? aTo : bTo;
+  const ea = toEpochDay(aFrom);
+  const eb = toEpochDay(bFrom);
+  const ec = toEpochDay(aTo);
+  const ed = toEpochDay(bTo);
+  if (![ea, eb, ec, ed].every((x) => Number.isFinite(x))) return 0;
+  const from = ea > eb ? aFrom : bFrom;
+  const to = ec < ed ? aTo : bTo;
   return daysInclusive(from, to);
 }
 

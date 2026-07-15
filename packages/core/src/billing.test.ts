@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   daysInclusive,
   overlapDays,
+  toEpochDay,
   computeOccupancy,
   calculateBilling,
   roundCent,
@@ -260,5 +261,48 @@ describe("calculateBilling – Verteilung", () => {
     expect(t1.heating_costs).toBe(50);
     // (100 + 50) − (120 + 40) = −10
     expect(t1.balance).toBe(-10);
+  });
+});
+
+describe("Null-Sicherheit (nullable Schema-Felder)", () => {
+  it("Datums-Helfer werfen bei null nicht, sondern liefern 0/NaN", () => {
+    expect(daysInclusive(null, "2025-01-10")).toBe(0);
+    expect(daysInclusive("2025-01-01", null)).toBe(0);
+    expect(daysInclusive(undefined, undefined)).toBe(0);
+    expect(overlapDays(null, "2025-01-10", "2025-01-06", "2025-01-31")).toBe(0);
+    expect(Number.isNaN(toEpochDay(null))).toBe(true);
+    expect(Number.isNaN(toEpochDay("kein-datum"))).toBe(true);
+  });
+
+  it("Mieter ohne move_out_date (laufend) → Belegung bis Periodenende", () => {
+    const o = computeOccupancy(
+      tenancy({ move_in: "2025-01-01", move_out: null }),
+      P_START,
+      P_END,
+    );
+    expect(o.occDays).toBe(10);
+    expect(o.occTo).toBe(P_END);
+  });
+
+  it("ungültiges move_in bringt die Belegung nicht zum Absturz", () => {
+    const o = computeOccupancy(
+      tenancy({ move_in: null as unknown as string, move_out: null }),
+      P_START,
+      P_END,
+    );
+    // Fallback: Belegung ab Periodenbeginn, kein Fehler
+    expect(o.occDays).toBe(10);
+    expect(o.occFrom).toBe(P_START);
+  });
+
+  it("laufender Mieter + Beleg (ohne Zahlungsdatum) wird korrekt verteilt", () => {
+    const res = calculateBilling(
+      baseInput({
+        tenancies: [tenancy({ move_out: null })],
+        records: [record({ amount: 100 })],
+      }),
+    );
+    expect(res.statements[0].total_share).toBe(100);
+    expect(res.owner.total_share).toBe(0);
   });
 });

@@ -101,37 +101,41 @@ export function Wizard({
 
   const preview = useMemo(() => {
     if (!data) return null;
-    const input: BillingInput = {
-      period_start: data.periodStart,
-      period_end: data.periodEnd,
-      units: data.units.map((u) => ({
-        id: u.id,
-        living_area: u.living_area,
-        ownership_share: u.ownership_share,
-      })),
-      tenancies: data.tenancies.map((t) => ({
-        tenant_id: t.tenant_id,
-        unit_id: t.unit_id,
-        move_in: t.move_in,
-        move_out: t.move_out,
-        persons_count: t.persons_count,
-        person_periods: personPeriods[t.tenant_id],
-      })),
-      records: data.records.map((r) => ({
-        id: r.id,
-        cost_type: r.cost_type,
-        allocation_key: r.allocation_key as AllocationKey,
-        amount: r.amount,
-        is_apportionable: r.is_apportionable,
-        unit_id: r.unit_id,
-        labor_cost_35a: r.labor_cost_35a,
-        type_35a: r.type_35a as Type35a,
-      })),
-      heating: heatingNumbers,
-      prepaymentsOperating: data.prepaymentsOperating,
-      prepaymentsHeating: data.prepaymentsHeating,
-    };
-    return calculateBilling(input);
+    try {
+      const input: BillingInput = {
+        period_start: data.periodStart,
+        period_end: data.periodEnd,
+        units: data.units.map((u) => ({
+          id: u.id,
+          living_area: u.living_area,
+          ownership_share: u.ownership_share,
+        })),
+        tenancies: data.tenancies.map((t) => ({
+          tenant_id: t.tenant_id,
+          unit_id: t.unit_id,
+          move_in: t.move_in,
+          move_out: t.move_out,
+          persons_count: t.persons_count,
+          person_periods: personPeriods[t.tenant_id],
+        })),
+        records: data.records.map((r) => ({
+          id: r.id,
+          cost_type: r.cost_type,
+          allocation_key: r.allocation_key as AllocationKey,
+          amount: r.amount,
+          is_apportionable: r.is_apportionable,
+          unit_id: r.unit_id,
+          labor_cost_35a: r.labor_cost_35a,
+          type_35a: r.type_35a as Type35a,
+        })),
+        heating: heatingNumbers,
+        prepaymentsOperating: data.prepaymentsOperating,
+        prepaymentsHeating: data.prepaymentsHeating,
+      };
+      return calculateBilling(input);
+    } catch {
+      return null;
+    }
   }, [data, personPeriods, heatingNumbers]);
 
   const tenantName = (id: string) => {
@@ -231,15 +235,27 @@ export function Wizard({
               setPersonPeriods={setPersonPeriods}
             />
           ) : null}
-          {step === 5 && preview ? (
-            <StepVorschau
-              data={data}
-              preview={preview}
-              tenantName={tenantName}
-            />
+          {step === 5 ? (
+            preview ? (
+              <StepVorschau
+                data={data}
+                preview={preview}
+                tenantName={tenantName}
+              />
+            ) : (
+              <PreviewError />
+            )
           ) : null}
-          {step === 6 && preview ? (
-            <StepAbschluss preview={preview} onFinalize={onFinalize} finalizing={finalizing} />
+          {step === 6 ? (
+            preview ? (
+              <StepAbschluss
+                preview={preview}
+                onFinalize={onFinalize}
+                finalizing={finalizing}
+              />
+            ) : (
+              <PreviewError />
+            )
           ) : null}
 
           <div className="mt-8 flex justify-between">
@@ -253,6 +269,17 @@ export function Wizard({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function PreviewError() {
+  return (
+    <Card>
+      <CardContent className="p-8 text-center text-sm text-muted-foreground">
+        Die Vorschau konnte nicht berechnet werden. Bitte prüfe die Belege und
+        Mietverhältnisse und gehe einen Schritt zurück.
+      </CardContent>
+    </Card>
   );
 }
 

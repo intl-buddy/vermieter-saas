@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Wizard } from "./Wizard";
+import { WizardErrorBoundary } from "./WizardErrorBoundary";
 
 export const metadata = { title: "Nebenkostenabrechnung · tefter" };
 
@@ -34,7 +35,9 @@ export default async function AbrechnungNeuPage({
           </CardContent>
         </Card>
       ) : (
-        <Wizard properties={properties} defaultObjekt={objekt} />
+        <WizardErrorBoundary>
+          <Wizard properties={properties} defaultObjekt={objekt} />
+        </WizardErrorBoundary>
       )}
     </AppShell>
   );
