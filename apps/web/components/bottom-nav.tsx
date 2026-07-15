@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, Euro, Settings } from "lucide-react";
+import { LayoutDashboard, Building2, Euro, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/objekte", label: "Objekte", icon: Building2 },
   { href: "/mieteingang", label: "Mieteingang", icon: Euro },
-  { href: "/einstellungen", label: "Einstellungen", icon: Settings },
+  { href: "/aufgaben", label: "Aufgaben", icon: ClipboardList },
 ];
 
 export function BottomNav() {

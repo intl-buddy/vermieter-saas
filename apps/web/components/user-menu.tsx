@@ -1,6 +1,7 @@
 "use client";
 
-import { User, ChevronDown, LogOut } from "lucide-react";
+import Link from "next/link";
+import { User, ChevronDown, LogOut, Settings } from "lucide-react";
 import { logout } from "@/app/actions";
 import {
   DropdownMenu,
@@ -27,6 +28,13 @@ export function UserMenu({ email }: { email: string }) {
             {email}
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/einstellungen">
+            <Settings className="size-4" />
+            Einstellungen
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <form action={logout}>
           <DropdownMenuItem asChild>

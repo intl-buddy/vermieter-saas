@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, Euro, Users } from "lucide-react";
+import { Building2, Euro, Users, ClipboardList } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
@@ -8,6 +8,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard · tefter" };
+
+/** Heutiges Datum als `YYYY-MM-DD` in lokaler Zeit. */
+function todayIso(): string {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 10);
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -18,13 +25,17 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [{ data: profile }, propertiesCount, { data: balances }] =
+  const [{ data: profile }, propertiesCount, { data: balances }, { data: tasks }] =
     await Promise.all([
       supabase.from("users").select("full_name").eq("id", user.id).maybeSingle(),
       supabase
         .from("properties")
         .select("id", { count: "exact", head: true }),
       supabase.from("tenant_balances").select("balance"),
+      supabase
+        .from("generated_tasks")
+        .select("status, due_date")
+        .in("status", ["open", "overdue"]),
     ]);
 
   const firstName =
@@ -36,6 +47,13 @@ export default async function DashboardPage() {
   const arrears = (balances ?? []).filter((b) => (b.balance ?? 0) > 0);
   const openTotal = arrears.reduce((sum, b) => sum + (b.balance ?? 0), 0);
   const arrearsCount = arrears.length;
+
+  const today = todayIso();
+  const openTasks = tasks ?? [];
+  const openTasksCount = openTasks.length;
+  const hasOverdue = openTasks.some(
+    (t) => t.status === "overdue" || (t.status === "open" && t.due_date < today),
+  );
 
   const kpis = [
     {
@@ -65,6 +83,16 @@ export default async function DashboardPage() {
           ? "bg-danger-50 text-danger-600"
           : "bg-neutral-100 text-neutral-500",
     },
+    {
+      label: "Offene Aufgaben",
+      value: String(openTasksCount),
+      icon: ClipboardList,
+      href: "/aufgaben",
+      tone: hasOverdue ? "text-danger-600" : "text-foreground",
+      iconBg: hasOverdue
+        ? "bg-danger-50 text-danger-600"
+        : "bg-gold-100 text-gold-700",
+    },
   ];
 
   return (
@@ -78,7 +106,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
