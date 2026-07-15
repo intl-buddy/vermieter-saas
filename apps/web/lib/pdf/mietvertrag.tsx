@@ -2,204 +2,362 @@ import {
   Document,
   Page,
   Text,
+  View,
   StyleSheet,
   renderToBuffer,
 } from "@react-pdf/renderer";
-import { formatDate } from "../format";
-import { MIETVERTRAG_VOLLTEXT } from "./mietvertragVolltext";
+import {
+  buildMietvertragDoc,
+  type Anlage,
+  type Block,
+  type MietvertragData,
+  type Section,
+} from "./mietvertragContent";
 
-export type MietvertragData = {
-  vermieterName: string;
-  vermieterAnschrift: string;
-  mieterName: string;
-  mieterAnschrift: string;
-  mieterGeburtsdatum: string; // ISO oder leer
-  objektAdresseLage: string;
-  rooms: string; // "4" oder "____"
-  mietbeginn: string; // ISO oder leer
-  grundmiete: number;
-  betriebskosten: number;
-  heizkosten: number;
-  advanceMode: string; // "split" | "combined"
-  kontoinhaber: string;
-  iban: string;
-  depositType: string;
-  depositAmount: number;
-};
+export type { MietvertragData } from "./mietvertragContent";
 
-const eurFormatter = new Intl.NumberFormat("de-DE", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-/** Betrag im Vertragsstil, z. B. `1.300,00 EUR`. */
-function eur(n: number): string {
-  return `${eurFormatter.format(n)} EUR`;
-}
-
-/** Erster Satz von § 8.1 abhängig von der Kautionsart. */
-function kautionSatz(type: string, amount: number): string {
-  switch (type) {
-    case "bank_guarantee":
-      return `stellt als Mietsicherheit eine selbstschuldnerische Bürgschaft in Höhe von ${eur(amount)}`;
-    case "deposit_insurance":
-      return `stellt als Mietsicherheit eine Kautionsversicherung in Höhe von ${eur(amount)}`;
-    case "pledged_savings":
-      return `stellt als Mietsicherheit ein verpfändetes Sparguthaben in Höhe von ${eur(amount)}`;
-    case "none":
-      return "leistet keine Mietsicherheit; eine Kaution wird nicht vereinbart";
-    case "cash_deposit":
-    default:
-      return `hinterlegt eine Barkaution in Höhe von ${eur(amount)}`;
-  }
-}
-
-/** Baut eine rechtsbündig ausgerichtete Betragszeile auf Zielbreite `width`. */
-function moneyRow(label: string, amount: number, width: number): string {
-  const value = eur(amount);
-  const pad = Math.max(1, width - label.length - value.length);
-  return label + " ".repeat(pad) + value;
-}
-
-const dash = (iso: string) => (iso ? formatDate(iso) : "____________");
-
-/**
- * Ersetzt die Musterwerte im wörtlichen Klauseltext durch die konkreten
- * Vertragsdaten und passt § 4 (Vorauszahlungen) an den Vorauszahlungs-Modus an.
- */
-function buildContractLines(data: MietvertragData): string[] {
-  let text = MIETVERTRAG_VOLLTEXT;
-
-  // Reihenfolge beachten: „Max Mustermann" vor „Max Muster".
-  text = text.split("Max Mustermann").join(data.kontoinhaber || "____________");
-  text = text.split("Max Muster").join(data.vermieterName || "____________");
-  text = text.replace("Musterstr. 123", data.vermieterAnschrift || "____________");
-  text = text.split("Asiye Terzi").join(data.mieterName || "____________");
-  text = text.replace(
-    "Musterstreet 123, 3432 Custi",
-    data.mieterAnschrift || "____________",
-  );
-  text = text.replace("01.02.1968", dash(data.mieterGeburtsdatum));
-  text = text
-    .split("Bruchstr. 96, 45468 Mülheim an der Ruhr, WE 1")
-    .join(data.objektAdresseLage || "____________");
-  text = text.split("01.01.2024").join(dash(data.mietbeginn));
-  text = text.replace("Bestehend aus: 4 Zimmern", `Bestehend aus: ${data.rooms} Zimmern`);
-  text = text.replace(
-    "hinterlegt eine Barkaution in Höhe von 1.800,00 EUR (zwei Kaltmieten)",
-    kautionSatz(data.depositType, data.depositAmount),
-  );
-  // IBAN steht in der Quelle über zwei Zeilen umbrochen.
-  text = text.replace(
-    /DE12 3655 0000 0053 2350\s*\n\s*73/g,
-    data.iban || "____________________________",
-  );
-
-  const combined = data.advanceMode === "combined";
-  const total = data.grundmiete + data.betriebskosten + data.heizkosten;
-
-  // Zielbreite der Betragszeilen aus der Original-Grundmiete-Zeile ableiten.
-  const rawLines = text.split("\n");
-  const grundmieteLine = rawLines.find((l) => l.startsWith("Grundmiete"));
-  const width = grundmieteLine ? grundmieteLine.trimEnd().length : 118;
-
-  const out: string[] = [];
-  for (const line of rawLines) {
-    if (line.startsWith("Grundmiete")) {
-      out.push(moneyRow("Grundmiete", data.grundmiete, width));
-    } else if (line.startsWith("Betriebskostenvorauszahlung")) {
-      out.push(
-        combined
-          ? moneyRow(
-              "Nebenkostenvorauszahlung",
-              data.betriebskosten + data.heizkosten,
-              width,
-            )
-          : moneyRow("Betriebskostenvorauszahlung", data.betriebskosten, width),
-      );
-    } else if (line.startsWith("Heizkosten-/Warmwasservorauszahlung")) {
-      // Im kombinierten Modus in der Nebenkostenzeile enthalten → entfällt.
-      if (!combined) {
-        out.push(
-          moneyRow(
-            "Heizkosten-/Warmwasservorauszahlung",
-            data.heizkosten,
-            width,
-          ),
-        );
-      }
-    } else if (line.startsWith("Stellplätze/Garagen (falls")) {
-      out.push(
-        moneyRow(
-          "Stellplätze/Garagen (falls vereinbart und vorhanden)",
-          0,
-          width,
-        ),
-      );
-    } else if (line.startsWith("Gesamtmiete")) {
-      out.push(moneyRow("Gesamtmiete", total, width));
-    } else {
-      out.push(line);
-    }
-  }
-  return out;
-}
+const GREEN = "#2a9549";
+const INK = "#1a1a1a";
+const MUTED = "#5a5a5a";
+const LINE = "#c9c9c9";
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 40,
-    paddingBottom: 46,
-    paddingLeft: 26,
-    paddingRight: 26,
-    fontFamily: "Courier",
-    fontSize: 7.5,
-    lineHeight: 1.3,
-    color: "#111111",
+    paddingTop: 54,
+    paddingBottom: 58,
+    paddingHorizontal: 60,
+    fontFamily: "Helvetica",
+    fontSize: 10,
+    lineHeight: 1.45,
+    color: INK,
   },
-  line: {},
-  heading: { fontFamily: "Courier-Bold" },
-  pageNumber: {
+  title: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 22,
+    textAlign: "center",
+    letterSpacing: 0.5,
+  },
+  rule: {
+    alignSelf: "center",
+    width: 132,
+    borderBottomWidth: 2,
+    borderBottomColor: GREEN,
+    marginTop: 6,
+    marginBottom: 18,
+  },
+  partiesRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  partyCol: { width: "47%" },
+  partyLabel: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 8,
+    color: GREEN,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 3,
+  },
+  partyName: { fontFamily: "Helvetica-Bold", fontSize: 11 },
+  partyLine: { fontSize: 10, color: INK },
+  partySub: { fontSize: 8.5, color: MUTED, marginTop: 1 },
+  intro: { marginBottom: 6, textAlign: "justify" },
+  sectionHeading: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 11.5,
+    textAlign: "center",
+    marginTop: 15,
+    marginBottom: 7,
+  },
+  clause: { marginBottom: 5, textAlign: "justify" },
+  address: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10.5,
+    marginVertical: 4,
+  },
+  listRow: { flexDirection: "row", marginBottom: 2, paddingLeft: 12 },
+  bullet: { width: 12 },
+  listText: { flex: 1 },
+  moneyBox: { marginVertical: 6, paddingLeft: 12, paddingRight: 4 },
+  moneyRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 1.5,
+  },
+  moneyTotal: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderTopColor: INK,
+    marginTop: 3,
+    paddingTop: 3,
+  },
+  moneyLabel: { color: INK },
+  moneyLabelBold: { fontFamily: "Helvetica-Bold" },
+  moneyValue: { fontFamily: "Helvetica" },
+  moneyValueBold: { fontFamily: "Helvetica-Bold" },
+  bankBox: { marginVertical: 6, paddingLeft: 12 },
+  bankRow: { flexDirection: "row", marginBottom: 1 },
+  bankLabel: { width: 90, color: MUTED },
+  bankValue: { flex: 1 },
+  subheading: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10.5,
+    marginTop: 9,
+    marginBottom: 3,
+  },
+  pageNo: {
     position: "absolute",
-    bottom: 22,
-    left: 26,
-    right: 26,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 40,
+    paddingTop: 14,
+  },
+  pageNoText: {
     textAlign: "center",
     fontSize: 8,
-    fontFamily: "Courier",
-    color: "#555555",
+    color: MUTED,
+    lineHeight: 1,
   },
+  // Unterschriften
+  signWrap: { marginTop: 34 },
+  signRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 22,
+  },
+  signCell: { width: "47%" },
+  signLine: { borderBottomWidth: 1, borderBottomColor: INK, height: 26 },
+  signCaption: { fontSize: 8.5, color: MUTED, marginTop: 3 },
+  // Anlagen
+  anlageCover: { marginBottom: 16 },
+  anlageKicker: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 9,
+    color: GREEN,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  anlageTitle: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 16,
+    marginTop: 4,
+  },
+  anlageRule: {
+    width: 90,
+    borderBottomWidth: 2,
+    borderBottomColor: GREEN,
+    marginTop: 6,
+  },
+  // SEPA
+  sepaRow: { flexDirection: "row", marginBottom: 10 },
+  sepaLabel: { width: 130, color: MUTED, fontSize: 9.5 },
+  sepaField: { flex: 1, borderBottomWidth: 1, borderBottomColor: LINE, minHeight: 14 },
 });
 
-const HEADING_RE = /^§ ?\d+ /;
+function renderBlock(block: Block, key: number) {
+  switch (block.t) {
+    case "clause":
+      return (
+        <Text key={key} style={styles.clause}>
+          {block.text}
+        </Text>
+      );
+    case "address":
+      return (
+        <Text key={key} style={styles.address}>
+          {block.text}
+        </Text>
+      );
+    case "list":
+      return (
+        <View key={key}>
+          {block.items.map((it, i) => (
+            <View key={i} style={styles.listRow}>
+              <Text style={styles.bullet}>–</Text>
+              <Text style={styles.listText}>{it}</Text>
+            </View>
+          ))}
+        </View>
+      );
+    case "money":
+      return (
+        <View key={key} style={styles.moneyBox}>
+          {block.rows.map((r, i) => (
+            <View key={i} style={styles.moneyRow}>
+              <Text style={styles.moneyLabel}>{r.label}</Text>
+              <Text style={styles.moneyValue}>{r.value}</Text>
+            </View>
+          ))}
+          <View style={styles.moneyTotal}>
+            <Text style={styles.moneyLabelBold}>{block.total.label}</Text>
+            <Text style={styles.moneyValueBold}>{block.total.value}</Text>
+          </View>
+        </View>
+      );
+    case "bank":
+      return (
+        <View key={key} style={styles.bankBox}>
+          {block.rows.map((r, i) => (
+            <View key={i} style={styles.bankRow}>
+              <Text style={styles.bankLabel}>{r.label}</Text>
+              <Text style={styles.bankValue}>{r.value}</Text>
+            </View>
+          ))}
+        </View>
+      );
+    case "subheading":
+      return (
+        <Text key={key} style={styles.subheading}>
+          {block.text}
+        </Text>
+      );
+    case "sepa":
+      return <SepaForm key={key} glaeubiger={block.glaeubiger} />;
+  }
+}
+
+function SectionView({ section }: { section: Section }) {
+  return (
+    <View>
+      <View wrap={false}>
+        <Text style={styles.sectionHeading}>{section.heading}</Text>
+      </View>
+      {section.blocks.map((b, i) => renderBlock(b, i))}
+    </View>
+  );
+}
+
+function SepaForm({ glaeubiger }: { glaeubiger: string }) {
+  const rows: { label: string; value?: string }[] = [
+    { label: "Gläubiger (Vermieter)", value: glaeubiger },
+    { label: "Mandatsreferenz" },
+    { label: "Kontoinhaber" },
+    { label: "IBAN" },
+    { label: "BIC" },
+  ];
+  return (
+    <View>
+      <Text style={styles.clause}>
+        Ich ermächtige den Vermieter, Zahlungen von meinem Konto mittels
+        Lastschrift einzuziehen. Zugleich weise ich mein Kreditinstitut an, die
+        vom Vermieter auf mein Konto gezogenen Lastschriften einzulösen.
+      </Text>
+      <View style={{ marginTop: 12 }}>
+        {rows.map((r, i) => (
+          <View key={i} style={styles.sepaRow}>
+            <Text style={styles.sepaLabel}>{r.label}</Text>
+            <Text style={styles.sepaField}>{r.value ?? " "}</Text>
+          </View>
+        ))}
+      </View>
+      <View style={[styles.signRow, { marginTop: 18 }]}>
+        <View style={styles.signCell}>
+          <View style={styles.signLine} />
+          <Text style={styles.signCaption}>Ort, Datum</Text>
+        </View>
+        <View style={styles.signCell}>
+          <View style={styles.signLine} />
+          <Text style={styles.signCaption}>Unterschrift Kontoinhaber</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function SignatureBlock() {
+  return (
+    <View style={styles.signWrap} wrap={false}>
+      <View style={styles.signRow}>
+        <View style={styles.signCell}>
+          <View style={styles.signLine} />
+          <Text style={styles.signCaption}>Ort, Datum</Text>
+        </View>
+        <View style={styles.signCell}>
+          <View style={styles.signLine} />
+          <Text style={styles.signCaption}>Ort, Datum</Text>
+        </View>
+      </View>
+      <View style={styles.signRow}>
+        <View style={styles.signCell}>
+          <View style={styles.signLine} />
+          <Text style={styles.signCaption}>Unterschrift Vermieter</Text>
+        </View>
+        <View style={styles.signCell}>
+          <View style={styles.signLine} />
+          <Text style={styles.signCaption}>Unterschrift Mieter</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function AnlageView({ anlage }: { anlage: Anlage }) {
+  return (
+    <View break>
+      <View style={styles.anlageCover}>
+        <Text style={styles.anlageKicker}>Anlage {anlage.nummer}</Text>
+        <Text style={styles.anlageTitle}>{anlage.titel}</Text>
+        <View style={styles.anlageRule} />
+      </View>
+      {anlage.blocks.map((b, i) => renderBlock(b, i))}
+    </View>
+  );
+}
 
 function MietvertragDocument({ data }: { data: MietvertragData }) {
-  const lines = buildContractLines(data);
+  const doc = buildMietvertragDoc(data);
+  const p = doc.parties;
   return (
     <Document
-      title={`Wohnraummietvertrag – ${data.mieterName}`}
-      author={data.vermieterName}
+      title={`Wohnraummietvertrag – ${p.mieterName}`}
+      author={p.vermieterName}
     >
       <Page size="A4" style={styles.page}>
-        {lines.map((line, i) => {
-          const trimmed = line.trim();
-          const isHeading =
-            HEADING_RE.test(trimmed) || trimmed === "Wohnraummietvertrag";
-          return (
-            <Text
-              key={i}
-              style={isHeading ? [styles.line, styles.heading] : styles.line}
-            >
-              {line.length > 0 ? line : " "}
+        <Text style={styles.title}>Wohnraummietvertrag</Text>
+        <View style={styles.rule} />
+
+        <View style={styles.partiesRow}>
+          <View style={styles.partyCol}>
+            <Text style={styles.partyLabel}>Vermieter</Text>
+            <Text style={styles.partyName}>{p.vermieterName}</Text>
+            <Text style={styles.partyLine}>{p.vermieterAnschrift}</Text>
+          </View>
+          <View style={styles.partyCol}>
+            <Text style={styles.partyLabel}>Mieter</Text>
+            <Text style={styles.partyName}>{p.mieterName}</Text>
+            <Text style={styles.partyLine}>{p.mieterAnschrift}</Text>
+            <Text style={styles.partySub}>
+              geboren am {p.mieterGeburtsdatum}
             </Text>
-          );
-        })}
-        <Text
-          style={styles.pageNumber}
-          fixed
-          render={({ pageNumber, totalPages }) =>
-            `Seite ${pageNumber} von ${totalPages}`
-          }
-        />
+          </View>
+        </View>
+
+        <Text style={styles.intro}>
+          Zwischen den vorstehend genannten Parteien wird der folgende
+          Wohnraummietvertrag geschlossen:
+        </Text>
+
+        {doc.sections.map((s, i) => (
+          <SectionView key={i} section={s} />
+        ))}
+
+        <SignatureBlock />
+
+        {doc.anlagen.map((a, i) => (
+          <AnlageView key={i} anlage={a} />
+        ))}
+
+        <View style={styles.pageNo} fixed>
+          <Text
+            style={styles.pageNoText}
+            render={({ pageNumber, totalPages }) =>
+              `Seite ${pageNumber} von ${totalPages}`
+            }
+          />
+        </View>
       </Page>
     </Document>
   );

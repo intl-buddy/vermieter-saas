@@ -1,25 +1,21 @@
 import { createClient } from "@/lib/supabase/server";
 import { renderMietvertragPdf } from "@/lib/pdf/mietvertrag";
+import type { MietvertragData, Staffel } from "@/lib/pdf/mietvertragContent";
 import { pdfDownloadResponse, safeFilePart } from "@/lib/pdf/pdfResponse";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Body = {
-  mieterName?: string;
-  mieterAnschrift?: string;
-  mieterGeburtsdatum?: string;
-  objektAdresseLage?: string;
-  rooms?: string;
-  mietbeginn?: string;
-  grundmiete?: number;
-  betriebskosten?: number;
-  heizkosten?: number;
-  advanceMode?: string;
-  iban?: string;
-  depositType?: string;
-  depositAmount?: number;
+type Body = Partial<Omit<MietvertragData, "staffeln" | "anlagen">> & {
+  staffeln?: Staffel[];
+  anlagen?: MietvertragData["anlagen"];
   filenamePart?: string;
+  useOwnVermieter?: boolean;
+};
+
+const num = (v: unknown) => {
+  const n = Number(v ?? 0);
+  return Number.isFinite(n) ? n : 0;
 };
 
 export async function POST(request: Request) {
@@ -53,27 +49,52 @@ export async function POST(request: Request) {
     .filter(Boolean)
     .join(", ");
 
-  const pdf = await renderMietvertragPdf({
+  const data: MietvertragData = {
     vermieterName,
     vermieterAnschrift,
     mieterName: body.mieterName ?? "",
     mieterAnschrift: body.mieterAnschrift ?? "",
     mieterGeburtsdatum: body.mieterGeburtsdatum ?? "",
     objektAdresseLage: body.objektAdresseLage ?? "",
-    rooms: body.rooms ?? "____",
+    zimmer: String(body.zimmer ?? ""),
+    kuechen: num(body.kuechen),
+    baeder: num(body.baeder),
+    keller: Boolean(body.keller),
+    balkon: Boolean(body.balkon),
+    stellplatz: Boolean(body.stellplatz),
+    stellplatzBez: body.stellplatzBez ?? "",
+    stellplatzMiete: num(body.stellplatzMiete),
     mietbeginn: body.mietbeginn ?? "",
-    grundmiete: Number(body.grundmiete ?? 0),
-    betriebskosten: Number(body.betriebskosten ?? 0),
-    heizkosten: Number(body.heizkosten ?? 0),
-    advanceMode: body.advanceMode ?? "split",
-    kontoinhaber: vermieterName,
+    grundmiete: num(body.grundmiete),
+    betriebskosten: num(body.betriebskosten),
+    heizkosten: num(body.heizkosten),
+    advanceMode: body.advanceMode === "combined" ? "combined" : "split",
+    mietart:
+      body.mietart === "staffel" || body.mietart === "index"
+        ? body.mietart
+        : "standard",
+    staffeln: Array.isArray(body.staffeln)
+      ? body.staffeln
+          .filter((s) => s && s.ab)
+          .map((s) => ({ ab: s.ab, miete: num(s.miete) }))
+      : [],
+    kontoinhaber: body.kontoinhaber || vermieterName,
     iban: body.iban ?? "",
+    bic: body.bic ?? "",
     depositType: body.depositType ?? "cash_deposit",
-    depositAmount: Number(body.depositAmount ?? 0),
-  });
+    depositAmount: num(body.depositAmount),
+    besondere: body.besondere ?? "",
+    anlagen: {
+      betrkv: Boolean(body.anlagen?.betrkv),
+      sepa: Boolean(body.anlagen?.sepa),
+      hausordnung: Boolean(body.anlagen?.hausordnung),
+      lueftung: Boolean(body.anlagen?.lueftung),
+    },
+  };
 
+  const pdf = await renderMietvertragPdf(data);
   return pdfDownloadResponse(
     pdf,
-    `Mietvertrag-${safeFilePart(body.filenamePart ?? "Mieter")}.pdf`,
+    `Mietvertrag-${safeFilePart(body.filenamePart || data.mieterName || "Mieter")}.pdf`,
   );
 }

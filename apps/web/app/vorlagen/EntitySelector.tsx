@@ -26,12 +26,14 @@ export function EntitySelector({
   propertyId,
   unitId,
   tenantId,
+  showTenant = true,
   onChange,
 }: {
   properties: VorlagenProperty[];
   propertyId: string | null;
   unitId: string | null;
   tenantId: string | null;
+  showTenant?: boolean;
   onChange: (next: {
     propertyId: string | null;
     unitId: string | null;
@@ -57,7 +59,13 @@ export function EntitySelector({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div
+      className={
+        showTenant
+          ? "grid grid-cols-1 gap-4 sm:grid-cols-3"
+          : "grid grid-cols-1 gap-4 sm:grid-cols-2"
+      }
+    >
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="sel-property">Objekt</Label>
         <Select
@@ -101,6 +109,7 @@ export function EntitySelector({
         </Select>
       </div>
 
+      {showTenant ? (
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="sel-tenant">Mieter</Label>
         <Select
@@ -126,6 +135,7 @@ export function EntitySelector({
           </SelectContent>
         </Select>
       </div>
+      ) : null}
     </div>
   );
 }
