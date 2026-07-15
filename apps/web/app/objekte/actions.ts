@@ -377,6 +377,15 @@ export async function createTenant(
     ? (depositTypeRaw as DepositType)
     : "cash_deposit";
 
+  // Vorauszahlungs-Modus: 'combined' → Heizkostenvorauszahlung wird auf 0
+  // gesetzt (operating_costs_advance ist die Gesamt-BK-Vorauszahlung).
+  const advanceMode =
+    String(formData.get("advance_mode") ?? "split") === "combined"
+      ? "combined"
+      : "split";
+  const effectiveHeatingAdvance =
+    advanceMode === "combined" ? 0 : heatingCostsAdvance;
+
   const supabase = await createClient();
   const { error } = await supabase.from("tenants").insert({
     user_id: auth.userId,
@@ -389,10 +398,11 @@ export async function createTenant(
     move_in_date: moveInDate,
     cold_rent: coldRent,
     operating_costs_advance: operatingCostsAdvance,
-    heating_costs_advance: heatingCostsAdvance,
+    heating_costs_advance: effectiveHeatingAdvance,
     rent_due_day: rentDueDay,
     deposit_type: depositType,
     deposit_amount: depositAmount,
+    advance_mode: advanceMode,
   });
 
   if (error) {
@@ -490,6 +500,13 @@ export async function updateTenant(
     ? (depositTypeRaw as DepositType)
     : "cash_deposit";
 
+  const advanceMode =
+    String(formData.get("advance_mode") ?? "split") === "combined"
+      ? "combined"
+      : "split";
+  const effectiveHeatingAdvance =
+    advanceMode === "combined" ? 0 : heatingCostsAdvance;
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("tenants")
@@ -502,13 +519,14 @@ export async function updateTenant(
       move_in_date: moveInDate,
       cold_rent: coldRent,
       operating_costs_advance: operatingCostsAdvance,
-      heating_costs_advance: heatingCostsAdvance,
+      heating_costs_advance: effectiveHeatingAdvance,
       rent_due_day: rentDueDay,
       deposit_type: depositType,
       deposit_amount: depositAmount,
       deposit_paid: depositPaid,
       iban: iban || null,
       notes: notes || null,
+      advance_mode: advanceMode,
     })
     .eq("id", id);
 

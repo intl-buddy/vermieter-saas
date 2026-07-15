@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { createTenant, type FormState } from "../actions";
@@ -43,6 +43,7 @@ export function TenantForm({
 }) {
   const [state, formAction] = useActionState(createTenant, initialState);
   const formRef = useRef<HTMLFormElement>(null);
+  const [advanceMode, setAdvanceMode] = useState("split");
 
   useEffect(() => {
     if (state.error) toast.error(state.error);
@@ -56,6 +57,7 @@ export function TenantForm({
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="unit_id" value={unitId} />
       <input type="hidden" name="property_id" value={propertyId} />
+      <input type="hidden" name="advance_mode" value={advanceMode} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
@@ -106,31 +108,72 @@ export function TenantForm({
             placeholder="z. B. 650,00"
           />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`${unitId}-operating_costs_advance`}>
-            NK-Vorauszahlung (€)
-          </Label>
-          <Input
-            id={`${unitId}-operating_costs_advance`}
-            name="operating_costs_advance"
-            type="number"
-            min="0"
-            step="0.01"
-            defaultValue="0"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`${unitId}-heating_costs_advance`}>
-            Heizkosten-Vorauszahlung (€)
-          </Label>
-          <Input
-            id={`${unitId}-heating_costs_advance`}
-            name="heating_costs_advance"
-            type="number"
-            min="0"
-            step="0.01"
-            defaultValue="0"
-          />
+        <div className="flex flex-col gap-2 sm:col-span-2">
+          <span className="text-sm font-medium text-neutral-700">
+            Vorauszahlungen
+          </span>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                checked={advanceMode === "split"}
+                onChange={() => setAdvanceMode("split")}
+              />
+              Nebenkosten + Heizkosten getrennt
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                checked={advanceMode === "combined"}
+                onChange={() => setAdvanceMode("combined")}
+              />
+              Betriebskosten gesamt
+            </label>
+          </div>
+          {advanceMode === "combined" ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`${unitId}-operating_costs_advance`}>
+                Betriebskosten-Vorauszahlung (€)
+              </Label>
+              <Input
+                id={`${unitId}-operating_costs_advance`}
+                name="operating_costs_advance"
+                type="number"
+                min="0"
+                step="0.01"
+                defaultValue="0"
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`${unitId}-operating_costs_advance`}>
+                  NK-Vorauszahlung (€)
+                </Label>
+                <Input
+                  id={`${unitId}-operating_costs_advance`}
+                  name="operating_costs_advance"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue="0"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`${unitId}-heating_costs_advance`}>
+                  Heizkosten-Vorauszahlung (€)
+                </Label>
+                <Input
+                  id={`${unitId}-heating_costs_advance`}
+                  name="heating_costs_advance"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue="0"
+                />
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={`${unitId}-rent_due_day`}>Fälligkeitstag (1–28)</Label>

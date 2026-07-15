@@ -71,7 +71,7 @@ export default async function MieteingangDetailPage({
   const { data: tenant } = await supabase
     .from("tenants")
     .select(
-      "id, first_name, last_name, email, phone, persons_count, move_in_date, cold_rent, operating_costs_advance, heating_costs_advance, rent_due_day, deposit_type, deposit_amount, deposit_paid, iban, notes, unit_id",
+      "id, first_name, last_name, email, phone, persons_count, move_in_date, cold_rent, operating_costs_advance, heating_costs_advance, advance_mode, rent_due_day, deposit_type, deposit_amount, deposit_paid, iban, notes, unit_id",
     )
     .eq("id", tenantId)
     .maybeSingle();
@@ -101,6 +101,7 @@ export default async function MieteingangDetailPage({
     cold_rent: tenant.cold_rent,
     operating_costs_advance: tenant.operating_costs_advance,
     heating_costs_advance: tenant.heating_costs_advance,
+    advance_mode: tenant.advance_mode,
     rent_due_day: tenant.rent_due_day,
     deposit_type: tenant.deposit_type,
     deposit_amount: tenant.deposit_amount,

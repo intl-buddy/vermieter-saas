@@ -77,6 +77,7 @@ export type Database = {
           pdf_url: string | null
           prepayments_heating: number
           prepayments_operating: number
+          prepayments_source: string
           tenant_id: string
           total_share: number
           unit_id: string | null
@@ -95,6 +96,7 @@ export type Database = {
           pdf_url?: string | null
           prepayments_heating?: number
           prepayments_operating?: number
+          prepayments_source?: string
           tenant_id: string
           total_share?: number
           unit_id?: string | null
@@ -113,6 +115,7 @@ export type Database = {
           pdf_url?: string | null
           prepayments_heating?: number
           prepayments_operating?: number
+          prepayments_source?: string
           tenant_id?: string
           total_share?: number
           unit_id?: string | null
@@ -667,6 +670,7 @@ export type Database = {
       }
       tenants: {
         Row: {
+          advance_mode: string
           cold_rent: number
           created_at: string
           deposit_amount: number
@@ -690,6 +694,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          advance_mode?: string
           cold_rent: number
           created_at?: string
           deposit_amount?: number
@@ -713,6 +718,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          advance_mode?: string
           cold_rent?: number
           created_at?: string
           deposit_amount?: number

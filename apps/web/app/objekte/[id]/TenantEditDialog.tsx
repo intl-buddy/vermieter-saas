@@ -42,6 +42,7 @@ export type TenantValues = {
   cold_rent: number;
   operating_costs_advance: number;
   heating_costs_advance: number;
+  advance_mode: string;
   rent_due_day: number;
   deposit_type: string;
   deposit_amount: number;
@@ -104,6 +105,9 @@ export function TenantEditDialog({
   const [coldRent, setColdRent] = useState(String(tenant.cold_rent));
   const [oca, setOca] = useState(String(tenant.operating_costs_advance));
   const [hca, setHca] = useState(String(tenant.heating_costs_advance));
+  const [advanceMode, setAdvanceMode] = useState(
+    tenant.advance_mode === "combined" ? "combined" : "split",
+  );
   const [depositPaid, setDepositPaid] = useState(tenant.deposit_paid);
 
   const amountsChanged =
@@ -134,6 +138,7 @@ export function TenantEditDialog({
         <form action={formAction} className="flex flex-col gap-4">
           <input type="hidden" name="id" value={tenant.id} />
           <input type="hidden" name="property_id" value={propertyId} />
+          <input type="hidden" name="advance_mode" value={advanceMode} />
           <input
             type="hidden"
             name="deposit_paid"
@@ -204,28 +209,73 @@ export function TenantEditDialog({
                 onChange={(e) => setColdRent(e.target.value)}
               />
             </Field>
-            <Field label="NK-Vorauszahlung (€)" htmlFor={`${uid}-oca`}>
-              <Input
-                id={`${uid}-oca`}
-                name="operating_costs_advance"
-                type="number"
-                min="0"
-                step="0.01"
-                value={oca}
-                onChange={(e) => setOca(e.target.value)}
-              />
-            </Field>
-            <Field label="Heizkosten-Vorauszahlung (€)" htmlFor={`${uid}-hca`}>
-              <Input
-                id={`${uid}-hca`}
-                name="heating_costs_advance"
-                type="number"
-                min="0"
-                step="0.01"
-                value={hca}
-                onChange={(e) => setHca(e.target.value)}
-              />
-            </Field>
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              <span className="text-sm font-medium text-neutral-700">
+                Vorauszahlungen
+              </span>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={advanceMode === "split"}
+                    onChange={() => setAdvanceMode("split")}
+                  />
+                  Nebenkosten + Heizkosten getrennt
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={advanceMode === "combined"}
+                    onChange={() => setAdvanceMode("combined")}
+                  />
+                  Betriebskosten gesamt
+                </label>
+              </div>
+              {advanceMode === "combined" ? (
+                <Field
+                  label="Betriebskosten-Vorauszahlung (€)"
+                  htmlFor={`${uid}-oca`}
+                >
+                  <Input
+                    id={`${uid}-oca`}
+                    name="operating_costs_advance"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={oca}
+                    onChange={(e) => setOca(e.target.value)}
+                  />
+                </Field>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="NK-Vorauszahlung (€)" htmlFor={`${uid}-oca`}>
+                    <Input
+                      id={`${uid}-oca`}
+                      name="operating_costs_advance"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={oca}
+                      onChange={(e) => setOca(e.target.value)}
+                    />
+                  </Field>
+                  <Field
+                    label="Heizkosten-Vorauszahlung (€)"
+                    htmlFor={`${uid}-hca`}
+                  >
+                    <Input
+                      id={`${uid}-hca`}
+                      name="heating_costs_advance"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={hca}
+                      onChange={(e) => setHca(e.target.value)}
+                    />
+                  </Field>
+                </div>
+              )}
+            </div>
             <Field label="Fälligkeitstag (1–28)" htmlFor={`${uid}-due`}>
               <Input
                 id={`${uid}-due`}

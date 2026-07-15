@@ -59,6 +59,8 @@ export type StatementPdfData = {
   prepaymentsOperating: number;
   prepaymentsHeating: number;
   balance: number;
+  advanceMode: string;
+  prepaymentsManual: boolean;
   labor35aHousehold: number;
   labor35aCraftsman: number;
   payment: { iban: string | null; bankName: string | null; bic: string | null };
@@ -352,28 +354,49 @@ function StatementDocument({ data }: { data: StatementPdfData }) {
           </Text>
         </View>
 
-        {/* Ergebnisblock */}
+        {/* Ergebnisblock – modusabhängig */}
         <View style={styles.resultBox}>
-          <View style={styles.rRow}>
-            <Text>Ihre Betriebskosten</Text>
-            <Text>{formatCurrency(data.totalShare)}</Text>
-          </View>
-          <View style={styles.rRow}>
-            <Text>Ihre Heizkosten</Text>
-            <Text>{formatCurrency(data.heatingCosts)}</Text>
-          </View>
-          <View style={styles.rRow}>
-            <Text style={styles.bold}>Summe</Text>
-            <Text style={styles.bold}>{formatCurrency(summeIhreKosten)}</Text>
-          </View>
-          <View style={styles.rRow}>
-            <Text>
-              geleistete Vorauszahlungen (Soll) – NK{" "}
-              {formatCurrency(data.prepaymentsOperating)} / HK{" "}
-              {formatCurrency(data.prepaymentsHeating)}
-            </Text>
-            <Text>−{formatCurrency(prepayTotal)}</Text>
-          </View>
+          {data.advanceMode === "combined" ? (
+            <>
+              <View style={styles.rRow}>
+                <Text style={styles.bold}>
+                  Ihre Betriebskosten (inkl. Heizkosten)
+                </Text>
+                <Text style={styles.bold}>
+                  {formatCurrency(summeIhreKosten)}
+                </Text>
+              </View>
+              <View style={styles.rRow}>
+                <Text>Vorauszahlungen Betriebskosten</Text>
+                <Text>−{formatCurrency(prepayTotal)}</Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.rRow}>
+                <Text>Ihre Nebenkosten</Text>
+                <Text>{formatCurrency(data.totalShare)}</Text>
+              </View>
+              <View style={styles.rRow}>
+                <Text>Ihre Heizkosten</Text>
+                <Text>{formatCurrency(data.heatingCosts)}</Text>
+              </View>
+              <View style={styles.rRow}>
+                <Text style={styles.bold}>Summe</Text>
+                <Text style={styles.bold}>
+                  {formatCurrency(summeIhreKosten)}
+                </Text>
+              </View>
+              <View style={styles.rRow}>
+                <Text>Vorauszahlungen Nebenkosten</Text>
+                <Text>−{formatCurrency(data.prepaymentsOperating)}</Text>
+              </View>
+              <View style={styles.rRow}>
+                <Text>Vorauszahlungen Heizkosten</Text>
+                <Text>−{formatCurrency(data.prepaymentsHeating)}</Text>
+              </View>
+            </>
+          )}
           <View style={styles.rTotal}>
             <Text style={styles.bold}>
               {isNachzahlung ? "Nachzahlung" : "Guthaben"}
@@ -383,6 +406,11 @@ function StatementDocument({ data }: { data: StatementPdfData }) {
             </Text>
           </View>
         </View>
+        {data.prepaymentsManual ? (
+          <Text style={{ marginTop: 4, fontSize: 8, color: "#777777" }}>
+            Vorauszahlungen gemäß Angabe des Vermieters.
+          </Text>
+        ) : null}
 
         {isNachzahlung ? (
           <View>

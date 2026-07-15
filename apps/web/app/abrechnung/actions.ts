@@ -31,6 +31,7 @@ export type WizardTenancy = {
   move_in: string;
   move_out: string | null;
   persons_count: number;
+  advance_mode: string;
 };
 export type WizardRecord = {
   id: string;
@@ -72,6 +73,9 @@ export type FinalizePayload = {
   periodEnd: string;
   heating: Record<string, number>;
   personPeriods: Record<string, PersonPeriod[]>;
+  prepaymentsOperating: Record<string, number>;
+  prepaymentsHeating: Record<string, number>;
+  prepaymentsSource: Record<string, string>;
 };
 
 async function assembleData(
@@ -105,7 +109,7 @@ async function assembleData(
     const { data: tenants } = await supabase
       .from("tenants")
       .select(
-        "id, unit_id, first_name, last_name, move_in_date, move_out_date, persons_count",
+        "id, unit_id, first_name, last_name, move_in_date, move_out_date, persons_count, advance_mode",
       )
       .in("unit_id", unitIds)
       .lte("move_in_date", periodEnd)
@@ -120,6 +124,7 @@ async function assembleData(
       move_in: t.move_in_date,
       move_out: t.move_out_date,
       persons_count: t.persons_count,
+      advance_mode: t.advance_mode,
     }));
 
     const tenantIds = tenancies.map((t) => t.tenant_id);
@@ -207,6 +212,8 @@ function buildBillingInput(
   data: WizardData,
   heating: Record<string, number>,
   personPeriods: Record<string, PersonPeriod[]>,
+  prepaymentsOperating: Record<string, number>,
+  prepaymentsHeating: Record<string, number>,
 ): BillingInput {
   const tenancies: TenancyInput[] = data.tenancies.map((t) => ({
     tenant_id: t.tenant_id,
@@ -237,8 +244,8 @@ function buildBillingInput(
     tenancies,
     records,
     heating,
-    prepaymentsOperating: data.prepaymentsOperating,
-    prepaymentsHeating: data.prepaymentsHeating,
+    prepaymentsOperating,
+    prepaymentsHeating,
   };
 }
 
@@ -303,6 +310,8 @@ export async function finalizeBilling(
     data,
     payload.heating,
     payload.personPeriods,
+    payload.prepaymentsOperating,
+    payload.prepaymentsHeating,
   );
   const result = calculateBilling(input);
 
@@ -395,6 +404,11 @@ export async function finalizeBilling(
         ? "wechselnd"
         : String(t?.persons_count ?? 0);
     const unitArea = unit?.living_area ?? 0;
+    const advanceMode = t?.advance_mode === "combined" ? "combined" : "split";
+    const prepaySource =
+      payload.prepaymentsSource[st.tenant_id] === "manual"
+        ? "manual"
+        : "calculated";
 
     // Snapshot mit vollem Rechenweg (defensiv: neue Läufe haben alle Felder)
     const snapshot = st.positions.map((p) => ({
@@ -424,6 +438,7 @@ export async function finalizeBilling(
         balance: st.balance,
         labor_35a_household: st.labor_35a_household,
         labor_35a_craftsman: st.labor_35a_craftsman,
+        prepayments_source: prepaySource,
         line_items: snapshot,
       })
       .select("id")
@@ -484,6 +499,8 @@ export async function finalizeBilling(
       prepaymentsOperating: st.prepayments_operating,
       prepaymentsHeating: st.prepayments_heating,
       balance: st.balance,
+      advanceMode,
+      prepaymentsManual: prepaySource === "manual",
       labor35aHousehold: st.labor_35a_household,
       labor35aCraftsman: st.labor_35a_craftsman,
       payment: {

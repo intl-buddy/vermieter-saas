@@ -322,3 +322,38 @@ describe("Null-Sicherheit (nullable Schema-Felder)", () => {
     expect(res.owner.total_share).toBe(0);
   });
 });
+
+describe("Vorauszahlungs-Modus & manuelle Werte", () => {
+  it("combined-Modus: Gesamt-BK-Vorauszahlung, Heizkosten-VZ = 0", () => {
+    const res = calculateBilling(
+      baseInput({
+        tenancies: [tenancy()],
+        records: [record({ amount: 100 })],
+        heating: { T1: 40 },
+        prepaymentsOperating: { T1: 130 }, // Gesamt-Betriebskostenvorauszahlung
+        prepaymentsHeating: { T1: 0 },
+      }),
+    );
+    const t1 = res.statements[0];
+    expect(t1.prepayments_operating).toBe(130);
+    expect(t1.prepayments_heating).toBe(0);
+    // (100 + 40) − 130 = 10 Nachzahlung
+    expect(t1.balance).toBe(10);
+  });
+
+  it("manuell überschriebene Vorauszahlung fließt in den Saldo (Alt-Jahr)", () => {
+    const res = calculateBilling(
+      baseInput({
+        tenancies: [tenancy()],
+        records: [record({ amount: 200 })],
+        heating: { T1: 0 },
+        // Für ein Jahr vor tefter-Nutzung manuell eingetragen:
+        prepaymentsOperating: { T1: 250 },
+        prepaymentsHeating: { T1: 0 },
+      }),
+    );
+    const t1 = res.statements[0];
+    expect(t1.prepayments_operating).toBe(250);
+    expect(t1.balance).toBe(-50); // 200 − 250 = −50 Guthaben
+  });
+});

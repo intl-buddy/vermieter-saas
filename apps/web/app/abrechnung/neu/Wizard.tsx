@@ -40,6 +40,7 @@ const STEPS = [
   "Belege",
   "Heizkosten",
   "Mietzeiten & Personen",
+  "Vorauszahlungen prüfen",
   "Vorschau",
   "Abschluss",
 ];
@@ -73,6 +74,9 @@ export function Wizard({
   const [personPeriods, setPersonPeriods] = useState<
     Record<string, PersonPeriod[]>
   >({});
+  const [prepayOp, setPrepayOp] = useState<Record<string, string>>({});
+  const [prepayHeat, setPrepayHeat] = useState<Record<string, string>>({});
+  const [prepayTouched, setPrepayTouched] = useState<Record<string, boolean>>({});
   const [finalizing, setFinalizing] = useState(false);
 
   async function onLoad() {
@@ -94,7 +98,29 @@ export function Wizard({
     setData(res);
     setHeating(Object.fromEntries(res.tenancies.map((t) => [t.tenant_id, "0"])));
     setPersonPeriods(res.personPeriods);
+    setPrepayOp(
+      Object.fromEntries(
+        res.tenancies.map((t) => [
+          t.tenant_id,
+          String(res.prepaymentsOperating[t.tenant_id] ?? 0),
+        ]),
+      ),
+    );
+    setPrepayHeat(
+      Object.fromEntries(
+        res.tenancies.map((t) => [
+          t.tenant_id,
+          String(res.prepaymentsHeating[t.tenant_id] ?? 0),
+        ]),
+      ),
+    );
+    setPrepayTouched({});
     setStep(2);
+  }
+
+  function toNum(v: string): number {
+    const n = Number(String(v).replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
   }
 
   async function reloadData() {
@@ -105,12 +131,21 @@ export function Wizard({
 
   const heatingNumbers = useMemo(() => {
     const out: Record<string, number> = {};
-    for (const [k, v] of Object.entries(heating)) {
-      const n = Number(String(v).replace(",", "."));
-      out[k] = Number.isFinite(n) ? n : 0;
-    }
+    for (const [k, v] of Object.entries(heating)) out[k] = toNum(v);
     return out;
   }, [heating]);
+
+  const prepayOpNumbers = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(prepayOp)) out[k] = toNum(v);
+    return out;
+  }, [prepayOp]);
+
+  const prepayHeatNumbers = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(prepayHeat)) out[k] = toNum(v);
+    return out;
+  }, [prepayHeat]);
 
   const preview = useMemo(() => {
     if (!data) return null;
@@ -142,14 +177,20 @@ export function Wizard({
           type_35a: r.type_35a as Type35a,
         })),
         heating: heatingNumbers,
-        prepaymentsOperating: data.prepaymentsOperating,
-        prepaymentsHeating: data.prepaymentsHeating,
+        prepaymentsOperating: prepayOpNumbers,
+        prepaymentsHeating: prepayHeatNumbers,
       };
       return calculateBilling(input);
     } catch {
       return null;
     }
-  }, [data, personPeriods, heatingNumbers]);
+  }, [
+    data,
+    personPeriods,
+    heatingNumbers,
+    prepayOpNumbers,
+    prepayHeatNumbers,
+  ]);
 
   const tenantName = (id: string) => {
     const t = data?.tenancies.find((x) => x.tenant_id === id);
@@ -159,12 +200,21 @@ export function Wizard({
   async function onFinalize() {
     if (!data) return;
     setFinalizing(true);
+    const prepaymentsSource: Record<string, string> = {};
+    for (const t of data.tenancies) {
+      prepaymentsSource[t.tenant_id] = prepayTouched[t.tenant_id]
+        ? "manual"
+        : "calculated";
+    }
     const res = await finalizeBilling({
       propertyId: objektId,
       periodStart: von,
       periodEnd: bis,
       heating: heatingNumbers,
       personPeriods,
+      prepaymentsOperating: prepayOpNumbers,
+      prepaymentsHeating: prepayHeatNumbers,
+      prepaymentsSource,
     });
     if (res.error || !res.runId) {
       toast.error(res.error ?? "Erstellung fehlgeschlagen.");
@@ -255,6 +305,21 @@ export function Wizard({
             />
           ) : null}
           {step === 5 ? (
+            <StepVorauszahlungen
+              data={data}
+              prepayOp={prepayOp}
+              prepayHeat={prepayHeat}
+              onChangeOp={(tid, v) => {
+                setPrepayOp((s) => ({ ...s, [tid]: v }));
+                setPrepayTouched((s) => ({ ...s, [tid]: true }));
+              }}
+              onChangeHeat={(tid, v) => {
+                setPrepayHeat((s) => ({ ...s, [tid]: v }));
+                setPrepayTouched((s) => ({ ...s, [tid]: true }));
+              }}
+            />
+          ) : null}
+          {step === 6 ? (
             preview ? (
               <StepVorschau
                 data={data}
@@ -265,7 +330,7 @@ export function Wizard({
               <PreviewError />
             )
           ) : null}
-          {step === 6 ? (
+          {step === 7 ? (
             preview ? (
               <StepAbschluss
                 preview={preview}
@@ -281,7 +346,7 @@ export function Wizard({
             <Button variant="outline" onClick={() => setStep((s) => s - 1)}>
               Zurück
             </Button>
-            {step < 6 ? (
+            {step < 7 ? (
               <Button onClick={() => setStep((s) => s + 1)}>Weiter</Button>
             ) : null}
           </div>
@@ -789,7 +854,104 @@ function StepMietzeiten({
 }
 
 // ---------------------------------------------------------------------------
-// Schritt 5 – Vorschau
+// Schritt 5 – Vorauszahlungen prüfen
+// ---------------------------------------------------------------------------
+function StepVorauszahlungen({
+  data,
+  prepayOp,
+  prepayHeat,
+  onChangeOp,
+  onChangeHeat,
+}: {
+  data: WizardData;
+  prepayOp: Record<string, string>;
+  prepayHeat: Record<string, string>;
+  onChangeOp: (tid: string, v: string) => void;
+  onChangeHeat: (tid: string, v: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="rounded-lg border border-secondary-100 bg-secondary-50 px-4 py-3 text-sm text-secondary-800">
+        Aus den Soll-Stellungen ermittelte Vorauszahlungen des Zeitraums. Passe
+        sie bei Bedarf an – z. B. für Abrechnungsjahre vor der tefter-Nutzung.
+      </div>
+      {data.tenancies.map((t) => {
+        const combined = t.advance_mode === "combined";
+        const calcSum =
+          (data.prepaymentsOperating[t.tenant_id] ?? 0) +
+          (data.prepaymentsHeating[t.tenant_id] ?? 0);
+        return (
+          <Card key={t.tenant_id}>
+            <CardContent className="flex flex-col gap-3 p-4">
+              <div className="font-medium">
+                {t.first_name} {t.last_name}{" "}
+                <span className="text-sm font-normal text-muted-foreground">
+                  · Einheit {t.unit_label}
+                </span>
+              </div>
+              {calcSum === 0 ? (
+                <div className="rounded-lg border border-warning-100 bg-warning-50 px-3 py-2 text-sm text-warning-700">
+                  Keine Vorauszahlungen erfasst – bitte manuell eintragen (Summe
+                  des gesamten Zeitraums).
+                </div>
+              ) : null}
+              {combined ? (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor={`pp-${t.tenant_id}`} className="text-sm">
+                    Betriebskosten-VZ (gesamt, €)
+                  </Label>
+                  <Input
+                    id={`pp-${t.tenant_id}`}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-36"
+                    value={prepayOp[t.tenant_id] ?? "0"}
+                    onChange={(e) => onChangeOp(t.tenant_id, e.target.value)}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor={`ppo-${t.tenant_id}`} className="text-sm">
+                      NK-VZ (€)
+                    </Label>
+                    <Input
+                      id={`ppo-${t.tenant_id}`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="w-32"
+                      value={prepayOp[t.tenant_id] ?? "0"}
+                      onChange={(e) => onChangeOp(t.tenant_id, e.target.value)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor={`pph-${t.tenant_id}`} className="text-sm">
+                      Heizkosten-VZ (€)
+                    </Label>
+                    <Input
+                      id={`pph-${t.tenant_id}`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="w-32"
+                      value={prepayHeat[t.tenant_id] ?? "0"}
+                      onChange={(e) => onChangeHeat(t.tenant_id, e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Schritt 6 – Vorschau
 // ---------------------------------------------------------------------------
 function StepVorschau({
   data,
@@ -854,11 +1016,36 @@ function StepVorschau({
               </tbody>
             </table>
             <div className="mt-3 flex flex-col gap-1 border-t border-neutral-100 pt-2">
-              <Row label="Zwischensumme" value={st.total_share + st.heating_costs} />
-              <Row
-                label="Vorauszahlungen"
-                value={-(st.prepayments_operating + st.prepayments_heating)}
-              />
+              {data.tenancies.find((x) => x.tenant_id === st.tenant_id)
+                ?.advance_mode === "combined" ? (
+                <>
+                  <Row
+                    label="Ihre Betriebskosten (inkl. Heizkosten)"
+                    value={st.total_share + st.heating_costs}
+                  />
+                  <Row
+                    label="Vorauszahlungen Betriebskosten"
+                    value={-(st.prepayments_operating + st.prepayments_heating)}
+                  />
+                </>
+              ) : (
+                <>
+                  <Row label="Ihre Nebenkosten" value={st.total_share} />
+                  <Row label="Ihre Heizkosten" value={st.heating_costs} />
+                  <Row
+                    label="Summe"
+                    value={st.total_share + st.heating_costs}
+                  />
+                  <Row
+                    label="Vorauszahlungen Nebenkosten"
+                    value={-st.prepayments_operating}
+                  />
+                  <Row
+                    label="Vorauszahlungen Heizkosten"
+                    value={-st.prepayments_heating}
+                  />
+                </>
+              )}
               <div className="flex justify-between font-bold">
                 <span>{st.balance > 0 ? "Nachzahlung" : "Guthaben"}</span>
                 <span className="tabular-nums">

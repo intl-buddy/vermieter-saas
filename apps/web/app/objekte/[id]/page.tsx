@@ -109,7 +109,7 @@ export default async function ObjektDetailPage({
     const { data: tenants } = await supabase
       .from("tenants")
       .select(
-        "id, unit_id, first_name, last_name, email, phone, persons_count, move_in_date, move_out_date, cold_rent, operating_costs_advance, heating_costs_advance, rent_due_day, deposit_type, deposit_amount, deposit_paid, iban, notes",
+        "id, unit_id, first_name, last_name, email, phone, persons_count, move_in_date, move_out_date, cold_rent, operating_costs_advance, heating_costs_advance, advance_mode, rent_due_day, deposit_type, deposit_amount, deposit_paid, iban, notes",
       )
       .in("unit_id", unitIds)
       .order("move_out_date", { ascending: false });
@@ -128,6 +128,7 @@ export default async function ObjektDetailPage({
           cold_rent: t.cold_rent,
           operating_costs_advance: t.operating_costs_advance,
           heating_costs_advance: t.heating_costs_advance,
+          advance_mode: t.advance_mode,
           rent_due_day: t.rent_due_day,
           deposit_type: t.deposit_type,
           deposit_amount: t.deposit_amount,
@@ -251,14 +252,29 @@ export default async function ObjektDetailPage({
                             label="Kaltmiete"
                             value={formatCurrency(tenant.cold_rent)}
                           />
-                          <InfoItem
-                            label="NK-Vorauszahlung"
-                            value={formatCurrency(tenant.operating_costs_advance)}
-                          />
-                          <InfoItem
-                            label="Heizkosten-VZ"
-                            value={formatCurrency(tenant.heating_costs_advance)}
-                          />
+                          {tenant.advance_mode === "combined" ? (
+                            <InfoItem
+                              label="Betriebskosten-VZ"
+                              value={formatCurrency(
+                                tenant.operating_costs_advance,
+                              )}
+                            />
+                          ) : (
+                            <>
+                              <InfoItem
+                                label="NK-Vorauszahlung"
+                                value={formatCurrency(
+                                  tenant.operating_costs_advance,
+                                )}
+                              />
+                              <InfoItem
+                                label="Heizkosten-VZ"
+                                value={formatCurrency(
+                                  tenant.heating_costs_advance,
+                                )}
+                              />
+                            </>
+                          )}
                           <InfoItem
                             label="Fälligkeitstag"
                             value={`${tenant.rent_due_day}.`}
