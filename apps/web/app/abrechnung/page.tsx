@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DeleteRunButton } from "./DeleteRunButton";
 
 export const metadata = { title: "Abrechnungen · tefter" };
 
@@ -75,6 +76,7 @@ export default async function AbrechnungenPage() {
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Mieter</TableHead>
                 <TableHead className="text-right">Summe</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -101,6 +103,9 @@ export default async function AbrechnungenPage() {
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-right tabular-nums">
                       {formatCurrency(r.total_costs)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DeleteRunButton runId={r.id} />
                     </TableCell>
                   </TableRow>
                 );

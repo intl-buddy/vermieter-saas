@@ -74,6 +74,9 @@ export type Database = {
           labor_35a_craftsman: number
           labor_35a_household: number
           line_items: Json
+          occupancy_days: number | null
+          occupancy_end: string | null
+          occupancy_start: string | null
           pdf_url: string | null
           prepayments_heating: number
           prepayments_operating: number
@@ -93,6 +96,9 @@ export type Database = {
           labor_35a_craftsman?: number
           labor_35a_household?: number
           line_items?: Json
+          occupancy_days?: number | null
+          occupancy_end?: string | null
+          occupancy_start?: string | null
           pdf_url?: string | null
           prepayments_heating?: number
           prepayments_operating?: number
@@ -112,6 +118,9 @@ export type Database = {
           labor_35a_craftsman?: number
           labor_35a_household?: number
           line_items?: Json
+          occupancy_days?: number | null
+          occupancy_end?: string | null
+          occupancy_start?: string | null
           pdf_url?: string | null
           prepayments_heating?: number
           prepayments_operating?: number

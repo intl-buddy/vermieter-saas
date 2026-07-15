@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, Info } from "lucide-react";
+import { Check, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   calculateBilling,
@@ -1111,7 +1111,14 @@ function StepAbschluss({
         </p>
         <div>
           <Button onClick={onFinalize} disabled={finalizing}>
-            {finalizing ? "Wird erstellt …" : "Abrechnungen erstellen"}
+            {finalizing ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Wird erstellt …
+              </>
+            ) : (
+              "Abrechnungen erstellen"
+            )}
           </Button>
         </div>
       </CardContent>

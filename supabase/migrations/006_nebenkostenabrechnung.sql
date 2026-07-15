@@ -91,6 +91,13 @@ CREATE TABLE billing_statements (
     balance                NUMERIC(12,2) NOT NULL DEFAULT 0,  -- > 0 = Nachzahlung
     labor_35a_household    NUMERIC(12,2) NOT NULL DEFAULT 0,
     labor_35a_craftsman    NUMERIC(12,2) NOT NULL DEFAULT 0,
+    -- Historisch angelegt, durch labor_35a_* ersetzt → in Migration 008 entfernt.
+    total_35a_household    NUMERIC(12,2) NOT NULL DEFAULT 0,
+    total_35a_craftsman    NUMERIC(12,2) NOT NULL DEFAULT 0,
+    -- Belegungszeitraum je Statement (ab Abschluss-Schritt befüllt).
+    occupancy_start        DATE,
+    occupancy_end          DATE,
+    occupancy_days         INTEGER,
     line_items             JSONB NOT NULL DEFAULT '[]',
     pdf_url                TEXT,
     created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),

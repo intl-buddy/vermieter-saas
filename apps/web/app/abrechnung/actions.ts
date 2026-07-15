@@ -284,6 +284,13 @@ export async function finalizeBilling(
   if (data.tenancies.length === 0) {
     return { error: "Für diesen Zeitraum gibt es keine Mietverhältnisse." };
   }
+  // Duplikatschutz: ein finalisierter Lauf je Objekt+Zeitraum genügt.
+  if (data.existingFinalized) {
+    return {
+      error:
+        "Für dieses Objekt und diesen Zeitraum existiert bereits eine Abrechnung – lösche sie zuerst in der Übersicht.",
+    };
+  }
 
   // Personenperioden persistieren (für die betroffenen Mieter ersetzen)
   const editedTenantIds = Object.keys(payload.personPeriods);
@@ -382,7 +389,11 @@ export async function finalizeBilling(
     (r) => r.is_apportionable && r.allocation_key === "persons",
   );
 
-  for (const st of result.statements) {
+  // Transaktionale Klammer: bei Fehler wird alles zurückgerollt
+  // (Lauf + Statements via Cascade + bereits hochgeladene PDFs).
+  const uploadedPaths: string[] = [];
+  try {
+    for (const st of result.statements) {
     const t = tenancyById.get(st.tenant_id);
     const unit = t ? unitById.get(t.unit_id) : undefined;
     const occ = t
@@ -424,7 +435,7 @@ export async function finalizeBilling(
       share: p.share,
     }));
 
-    const { data: statement } = await supabase
+    const { data: statement, error: statementError } = await supabase
       .from("billing_statements")
       .insert({
         user_id: user.id,
@@ -439,11 +450,16 @@ export async function finalizeBilling(
         labor_35a_household: st.labor_35a_household,
         labor_35a_craftsman: st.labor_35a_craftsman,
         prepayments_source: prepaySource,
+        occupancy_start: occ?.occFrom ?? null,
+        occupancy_end: occ?.occTo ?? null,
+        occupancy_days: st.occupancy_days,
         line_items: snapshot,
       })
       .select("id")
       .single();
-    if (!statement) continue;
+    if (statementError || !statement) {
+      throw new Error(statementError?.message ?? "Statement fehlgeschlagen");
+    }
 
     // PDF rendern + hochladen
     const pdf = await renderBillingStatementPdf({
@@ -517,14 +533,61 @@ export async function finalizeBilling(
     const { error: uploadError } = await supabase.storage
       .from("statements")
       .upload(path, bytes, { contentType: "application/pdf", upsert: true });
-    if (!uploadError) {
-      await supabase
-        .from("billing_statements")
-        .update({ pdf_url: path })
-        .eq("id", statement.id);
+    if (uploadError) {
+      throw new Error(`PDF-Upload fehlgeschlagen: ${uploadError.message}`);
     }
+    uploadedPaths.push(path);
+    await supabase
+      .from("billing_statements")
+      .update({ pdf_url: path })
+      .eq("id", statement.id);
+    }
+  } catch (e) {
+    if (uploadedPaths.length > 0) {
+      await supabase.storage.from("statements").remove(uploadedPaths);
+    }
+    // Löscht den Lauf und – via ON DELETE CASCADE – alle Statements.
+    await supabase.from("billing_runs").delete().eq("id", run.id);
+    return {
+      error: `Abrechnung fehlgeschlagen und zurückgerollt: ${
+        e instanceof Error ? e.message : "unbekannter Fehler"
+      }`,
+    };
   }
 
   revalidatePath("/abrechnung");
   return { runId: run.id };
+}
+
+/** Löscht einen Abrechnungslauf inkl. Statements (Cascade) und PDFs im Storage. */
+export async function deleteBillingRun(
+  runId: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Bitte melde dich erneut an." };
+
+  // PDF-Pfade der Statements ermitteln und aus dem Bucket entfernen.
+  const { data: statements } = await supabase
+    .from("billing_statements")
+    .select("pdf_url")
+    .eq("billing_run_id", runId);
+  const paths = (statements ?? [])
+    .map((s) => s.pdf_url)
+    .filter((p): p is string => !!p);
+  if (paths.length > 0) {
+    await supabase.storage.from("statements").remove(paths);
+  }
+
+  // Löscht den Lauf und – via ON DELETE CASCADE – alle Statements.
+  const { error } = await supabase
+    .from("billing_runs")
+    .delete()
+    .eq("id", runId);
+  if (error) return { error: `Löschen fehlgeschlagen: ${error.message}` };
+
+  revalidatePath("/abrechnung");
+  return {};
 }
