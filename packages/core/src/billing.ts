@@ -24,7 +24,7 @@ export interface UnitInput {
 
 export interface PersonPeriodInput {
   from: string; // YYYY-MM-DD inklusiv
-  to: string; // YYYY-MM-DD inklusiv
+  to: string | null; // YYYY-MM-DD inklusiv, null = laufend (offenes Ende)
   persons: number;
 }
 

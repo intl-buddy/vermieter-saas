@@ -83,7 +83,7 @@ export default async function MieteingangPage() {
             </TableHeader>
             <TableBody>
               {balances.map((row) => {
-                const isArrears = row.balance > 0;
+                const isArrears = (row.balance ?? 0) > 0;
                 return (
                   <TableRow key={row.tenant_id}>
                     <TableCell className="font-medium">

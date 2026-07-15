@@ -807,7 +807,7 @@ function StepMietzeiten({
                       <span className="text-muted-foreground">–</span>
                       <Input
                         type="date"
-                        value={p.to}
+                        value={p.to ?? ""}
                         onChange={(e) =>
                           updatePeriod(t.tenant_id, i, { to: e.target.value })
                         }

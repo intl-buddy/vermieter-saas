@@ -45,7 +45,7 @@ export type WizardRecord = {
   billing_period_start: string;
   billing_period_end: string;
 };
-export type PersonPeriod = { from: string; to: string; persons: number };
+export type PersonPeriod = { from: string; to: string | null; persons: number };
 
 export type WizardData = {
   property: {
@@ -181,7 +181,13 @@ async function assembleData(
     property,
     units: unitList,
     tenancies,
-    records: records ?? [],
+    // Nullable-Spalten (Migration 007/008) an der Grenze auf die
+    // Nicht-Null-Erwartung des Wizards abbilden: null = kein 35a-Anteil.
+    records: (records ?? []).map((r) => ({
+      ...r,
+      labor_cost_35a: r.labor_cost_35a ?? 0,
+      type_35a: r.type_35a ?? "",
+    })),
     personPeriods,
     prepaymentsOperating,
     prepaymentsHeating,
@@ -395,7 +401,9 @@ export async function finalizeBilling(
   try {
     for (const st of result.statements) {
     const t = tenancyById.get(st.tenant_id);
-    const unit = t ? unitById.get(t.unit_id) : undefined;
+    // Jede Abrechnungszeile stammt aus einem Mietverhältnis mit Einheit.
+    if (!t) continue;
+    const unit = unitById.get(t.unit_id);
     const occ = t
       ? computeOccupancy(
           {

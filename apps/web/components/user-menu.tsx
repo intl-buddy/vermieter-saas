@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { User, ChevronDown, LogOut, Settings, Receipt, Calculator } from "lucide-react";
+import { User, ChevronDown, LogOut, Settings, Receipt, Calculator, FileText } from "lucide-react";
 import { logout } from "@/app/actions";
 import {
   DropdownMenu,
@@ -29,6 +29,12 @@ export function UserMenu({ email }: { email: string }) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/vorlagen">
+            <FileText className="size-4" />
+            Vorlagen
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/belege">
             <Receipt className="size-4" />
