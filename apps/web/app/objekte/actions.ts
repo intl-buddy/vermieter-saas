@@ -411,3 +411,156 @@ export async function createTenant(
   }
   return { success: "Mietverhältnis wurde angelegt." };
 }
+
+/** Aktualisiert die Stammdaten eines Mietverhältnisses. */
+export async function updateTenant(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const auth = await requireUserId();
+  if ("error" in auth) return { error: auth.error };
+
+  const id = String(formData.get("id") ?? "").trim();
+  const propertyId = String(formData.get("property_id") ?? "").trim();
+  if (!id) return { error: "Mietverhältnis konnte nicht ermittelt werden." };
+
+  const firstName = String(formData.get("first_name") ?? "").trim();
+  const lastName = String(formData.get("last_name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  const personsRaw = String(formData.get("persons_count") ?? "").trim();
+  const moveInDate = String(formData.get("move_in_date") ?? "").trim();
+  const coldRentRaw = String(formData.get("cold_rent") ?? "").trim();
+  const ocaRaw = String(formData.get("operating_costs_advance") ?? "").trim();
+  const hcaRaw = String(formData.get("heating_costs_advance") ?? "").trim();
+  const rentDueDayRaw = String(formData.get("rent_due_day") ?? "").trim();
+  const depositTypeRaw = String(formData.get("deposit_type") ?? "").trim();
+  const depositAmountRaw = String(formData.get("deposit_amount") ?? "").trim();
+  const depositPaid = String(formData.get("deposit_paid") ?? "") === "true";
+  const iban = String(formData.get("iban") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim();
+
+  if (!firstName || !lastName || !moveInDate || !coldRentRaw) {
+    return {
+      error: "Bitte Vorname, Nachname, Einzugsdatum und Kaltmiete ausfüllen.",
+    };
+  }
+  if (email && !EMAIL_REGEX.test(email)) {
+    return { error: "Bitte eine gültige E-Mail-Adresse eingeben." };
+  }
+
+  const coldRent = parseDecimal(coldRentRaw);
+  if (coldRent === null || Number.isNaN(coldRent) || coldRent < 0) {
+    return { error: "Die Kaltmiete muss eine Zahl ≥ 0 sein." };
+  }
+
+  const operatingCostsAdvance = ocaRaw ? parseDecimal(ocaRaw) : 0;
+  const heatingCostsAdvance = hcaRaw ? parseDecimal(hcaRaw) : 0;
+  const depositAmount = depositAmountRaw ? parseDecimal(depositAmountRaw) : 0;
+  if (
+    operatingCostsAdvance === null ||
+    Number.isNaN(operatingCostsAdvance) ||
+    operatingCostsAdvance < 0 ||
+    heatingCostsAdvance === null ||
+    Number.isNaN(heatingCostsAdvance) ||
+    heatingCostsAdvance < 0 ||
+    depositAmount === null ||
+    Number.isNaN(depositAmount) ||
+    depositAmount < 0
+  ) {
+    return { error: "Vorauszahlungen und Kaution müssen Zahlen ≥ 0 sein." };
+  }
+
+  const personsCount = personsRaw ? parseIntStrict(personsRaw) : 1;
+  if (personsCount === null || Number.isNaN(personsCount) || personsCount < 1) {
+    return { error: "Die Personenzahl muss mindestens 1 betragen." };
+  }
+
+  const rentDueDay = rentDueDayRaw ? parseIntStrict(rentDueDayRaw) : 3;
+  if (
+    rentDueDay === null ||
+    Number.isNaN(rentDueDay) ||
+    rentDueDay < 1 ||
+    rentDueDay > 28
+  ) {
+    return { error: "Der Fälligkeitstag muss zwischen 1 und 28 liegen." };
+  }
+
+  const depositType = DEPOSIT_TYPES.includes(depositTypeRaw as DepositType)
+    ? (depositTypeRaw as DepositType)
+    : "cash_deposit";
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tenants")
+    .update({
+      first_name: firstName,
+      last_name: lastName,
+      email: email || null,
+      phone: phone || null,
+      persons_count: personsCount,
+      move_in_date: moveInDate,
+      cold_rent: coldRent,
+      operating_costs_advance: operatingCostsAdvance,
+      heating_costs_advance: heatingCostsAdvance,
+      rent_due_day: rentDueDay,
+      deposit_type: depositType,
+      deposit_amount: depositAmount,
+      deposit_paid: depositPaid,
+      iban: iban || null,
+      notes: notes || null,
+    })
+    .eq("id", id);
+
+  if (error) {
+    return {
+      error: describeDbError(error, {
+        check:
+          "Eingaben ungültig: Bitte Beträge, Personenzahl (≥ 1) und Fälligkeitstag (1–28) prüfen.",
+      }),
+    };
+  }
+
+  if (propertyId) revalidatePath(`/objekte/${propertyId}`);
+  revalidatePath(`/mieteingang/${id}`);
+  return { success: "Mietverhältnis wurde aktualisiert." };
+}
+
+/** Beendet ein Mietverhältnis, indem das Auszugsdatum gesetzt wird. */
+export async function endTenancy(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const auth = await requireUserId();
+  if ("error" in auth) return { error: auth.error };
+
+  const id = String(formData.get("id") ?? "").trim();
+  const propertyId = String(formData.get("property_id") ?? "").trim();
+  const moveOut = String(formData.get("move_out_date") ?? "").trim();
+  const moveIn = String(formData.get("move_in_date") ?? "").trim();
+  if (!id) return { error: "Mietverhältnis konnte nicht ermittelt werden." };
+  if (!moveOut) return { error: "Bitte ein Auszugsdatum angeben." };
+  if (moveIn && moveOut < moveIn) {
+    return {
+      error: "Das Auszugsdatum muss am oder nach dem Einzugsdatum liegen.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tenants")
+    .update({ move_out_date: moveOut })
+    .eq("id", id);
+
+  if (error) {
+    return {
+      error: describeDbError(error, {
+        check: "Das Auszugsdatum muss am oder nach dem Einzugsdatum liegen.",
+      }),
+    };
+  }
+
+  if (propertyId) revalidatePath(`/objekte/${propertyId}`);
+  revalidatePath(`/mieteingang/${id}`);
+  return { success: "Mietverhältnis wurde beendet." };
+}

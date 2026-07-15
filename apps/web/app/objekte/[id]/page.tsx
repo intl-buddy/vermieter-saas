@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { PropertyForm } from "../PropertyForm";
 import { UnitForm } from "./UnitForm";
 import { TenantForm } from "./TenantForm";
+import { TenantActions } from "./TenantActions";
+import type { TenantValues } from "./TenantEditDialog";
 
 type UnitType = Database["public"]["Enums"]["unit_type"];
 type DepositType = Database["public"]["Enums"]["deposit_type"];
@@ -88,39 +90,62 @@ export default async function ObjektDetailPage({
     .gte("invoice_date", `${belegeYear}-01-01`)
     .lte("invoice_date", `${belegeYear}-12-31`);
 
-  // Aktive Mietverhältnisse (move_out_date IS NULL) je Einheit separat laden
-  // und im Speicher zuordnen – vermeidet Mehrdeutigkeiten beim Embedded-Filter.
+  // Alle Mietverhältnisse (aktiv + beendet) je Einheit laden und im Speicher
+  // aufteilen. Aktiv = move_out_date IS NULL.
   const unitIds = (units ?? []).map((unit) => unit.id);
-  const activeTenantByUnit = new Map<
+  const activeTenantByUnit = new Map<string, TenantValues & { unit_id: string }>();
+  const endedByUnit = new Map<
     string,
     {
       id: string;
       first_name: string;
       last_name: string;
-      email: string | null;
-      phone: string | null;
-      persons_count: number;
       move_in_date: string;
-      cold_rent: number;
-      operating_costs_advance: number;
-      heating_costs_advance: number;
-      rent_due_day: number;
-      deposit_type: DepositType;
-      deposit_amount: number;
-    }
+      move_out_date: string;
+    }[]
   >();
 
   if (unitIds.length > 0) {
     const { data: tenants } = await supabase
       .from("tenants")
       .select(
-        "id, unit_id, first_name, last_name, email, phone, persons_count, move_in_date, cold_rent, operating_costs_advance, heating_costs_advance, rent_due_day, deposit_type, deposit_amount",
+        "id, unit_id, first_name, last_name, email, phone, persons_count, move_in_date, move_out_date, cold_rent, operating_costs_advance, heating_costs_advance, rent_due_day, deposit_type, deposit_amount, deposit_paid, iban, notes",
       )
       .in("unit_id", unitIds)
-      .is("move_out_date", null);
+      .order("move_out_date", { ascending: false });
 
-    for (const tenant of tenants ?? []) {
-      activeTenantByUnit.set(tenant.unit_id, tenant);
+    for (const t of tenants ?? []) {
+      if (t.move_out_date === null) {
+        activeTenantByUnit.set(t.unit_id, {
+          id: t.id,
+          unit_id: t.unit_id,
+          first_name: t.first_name,
+          last_name: t.last_name,
+          email: t.email,
+          phone: t.phone,
+          persons_count: t.persons_count,
+          move_in_date: t.move_in_date,
+          cold_rent: t.cold_rent,
+          operating_costs_advance: t.operating_costs_advance,
+          heating_costs_advance: t.heating_costs_advance,
+          rent_due_day: t.rent_due_day,
+          deposit_type: t.deposit_type,
+          deposit_amount: t.deposit_amount,
+          deposit_paid: t.deposit_paid,
+          iban: t.iban,
+          notes: t.notes,
+        });
+      } else {
+        const list = endedByUnit.get(t.unit_id) ?? [];
+        list.push({
+          id: t.id,
+          first_name: t.first_name,
+          last_name: t.last_name,
+          move_in_date: t.move_in_date,
+          move_out_date: t.move_out_date,
+        });
+        endedByUnit.set(t.unit_id, list);
+      }
     }
   }
 
@@ -207,10 +232,16 @@ export default async function ObjektDetailPage({
 
                     {tenant ? (
                       <div className="rounded-xl border border-secondary-100 bg-secondary-50/50 p-4">
-                        <p className="mb-3 flex flex-wrap items-center gap-2 font-semibold">
-                          {tenant.first_name} {tenant.last_name}
-                          <Badge variant="success">Aktives Mietverhältnis</Badge>
-                        </p>
+                        <div className="mb-3 flex items-start justify-between gap-2">
+                          <p className="flex flex-wrap items-center gap-2 font-semibold">
+                            {tenant.first_name} {tenant.last_name}
+                            <Badge variant="success">Aktives Mietverhältnis</Badge>
+                          </p>
+                          <TenantActions
+                            tenant={tenant}
+                            propertyId={property.id}
+                          />
+                        </div>
                         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                           <InfoItem
                             label="Einzug"
@@ -238,7 +269,7 @@ export default async function ObjektDetailPage({
                           />
                           <InfoItem
                             label="Kaution"
-                            value={`${formatCurrency(tenant.deposit_amount)} (${DEPOSIT_TYPE_LABELS[tenant.deposit_type]})`}
+                            value={`${formatCurrency(tenant.deposit_amount)} (${DEPOSIT_TYPE_LABELS[tenant.deposit_type as DepositType]})`}
                           />
                           <InfoItem
                             label="Kontakt"
@@ -256,6 +287,36 @@ export default async function ObjektDetailPage({
                         </div>
                       </details>
                     )}
+
+                    {(endedByUnit.get(unit.id)?.length ?? 0) > 0 ? (
+                      <details className="mt-3 rounded-xl border border-neutral-200 bg-neutral-50">
+                        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-neutral-600 marker:hidden hover:text-neutral-800">
+                          Frühere Mietverhältnisse (
+                          {endedByUnit.get(unit.id)!.length})
+                        </summary>
+                        <div className="flex flex-col gap-2 border-t border-neutral-200 bg-white p-4">
+                          {endedByUnit.get(unit.id)!.map((e) => (
+                            <div
+                              key={e.id}
+                              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-500"
+                            >
+                              <span className="font-medium">
+                                {e.first_name} {e.last_name}
+                              </span>
+                              <span className="flex flex-wrap items-center gap-2">
+                                <span>
+                                  {formatDate(e.move_in_date)} –{" "}
+                                  {formatDate(e.move_out_date)}
+                                </span>
+                                <Badge variant="neutral">
+                                  Beendet zum {formatDate(e.move_out_date)}
+                                </Badge>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    ) : null}
 
                     <details className="mt-3 rounded-xl border border-dashed border-neutral-300 bg-neutral-50">
                       <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-primary marker:hidden hover:text-primary-600">

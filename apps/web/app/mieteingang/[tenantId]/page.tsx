@@ -19,6 +19,7 @@ import {
 import { PaymentForm } from "./PaymentForm";
 import { MarkSentButton } from "./MarkSentButton";
 import { SendDunningDialog } from "./SendDunningDialog";
+import { TenantEditDialog, type TenantValues } from "../../objekte/[id]/TenantEditDialog";
 
 type PayerType = Database["public"]["Enums"]["payer_type"];
 type DunningStatus = Database["public"]["Enums"]["dunning_status"];
@@ -69,7 +70,9 @@ export default async function MieteingangDetailPage({
   // Mieter laden (dient auch als Zugriffs-/Existenzprüfung via RLS).
   const { data: tenant } = await supabase
     .from("tenants")
-    .select("id, first_name, last_name, email")
+    .select(
+      "id, first_name, last_name, email, phone, persons_count, move_in_date, cold_rent, operating_costs_advance, heating_costs_advance, rent_due_day, deposit_type, deposit_amount, deposit_paid, iban, notes, unit_id",
+    )
     .eq("id", tenantId)
     .maybeSingle();
 
@@ -80,6 +83,31 @@ export default async function MieteingangDetailPage({
   const tenantName =
     [tenant.first_name, tenant.last_name].filter(Boolean).join(" ").trim() ||
     "Unbenannter Mieter";
+
+  // Objekt des Mieters für den (wiederverwendeten) Bearbeiten-Dialog auflösen.
+  const { data: tenantUnit } = await supabase
+    .from("units")
+    .select("property_id")
+    .eq("id", tenant.unit_id)
+    .maybeSingle();
+  const tenantValues: TenantValues = {
+    id: tenant.id,
+    first_name: tenant.first_name,
+    last_name: tenant.last_name,
+    email: tenant.email,
+    phone: tenant.phone,
+    persons_count: tenant.persons_count,
+    move_in_date: tenant.move_in_date,
+    cold_rent: tenant.cold_rent,
+    operating_costs_advance: tenant.operating_costs_advance,
+    heating_costs_advance: tenant.heating_costs_advance,
+    rent_due_day: tenant.rent_due_day,
+    deposit_type: tenant.deposit_type,
+    deposit_amount: tenant.deposit_amount,
+    deposit_paid: tenant.deposit_paid,
+    iban: tenant.iban,
+    notes: tenant.notes,
+  };
 
   const [
     { data: openCharges, error: chargesError },
@@ -143,13 +171,20 @@ export default async function MieteingangDetailPage({
             Offene Monate, Zahlungshistorie und Zahlungserfassung.
           </p>
         </div>
-        {totalOpen > 0 ? (
-          <Button asChild variant="destructive">
-            <Link href={`/mieteingang/${tenantId}/mahnung`}>
-              Mahnung erstellen
-            </Link>
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <TenantEditDialog
+            tenant={tenantValues}
+            propertyId={tenantUnit?.property_id ?? ""}
+            trigger={<Button variant="outline">Mieter bearbeiten</Button>}
+          />
+          {totalOpen > 0 ? (
+            <Button asChild variant="destructive">
+              <Link href={`/mieteingang/${tenantId}/mahnung`}>
+                Mahnung erstellen
+              </Link>
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {/* (a) Offene Monate */}
