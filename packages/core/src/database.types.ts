@@ -154,16 +154,19 @@ export type Database = {
           billing_period_start: string
           cost_type: Database["public"]["Enums"]["operating_cost_type"]
           created_at: string
+          gross_amount: number | null
           id: string
           invoice_date: string | null
           invoice_number: string | null
           is_apportionable: boolean
           notes: string | null
+          paid_date: string | null
           property_id: string
           receipt_url: string | null
           unit_id: string | null
           updated_at: string
           user_id: string
+          vat_rate: number | null
           vendor: string | null
         }
         Insert: {
@@ -173,16 +176,19 @@ export type Database = {
           billing_period_start: string
           cost_type: Database["public"]["Enums"]["operating_cost_type"]
           created_at?: string
+          gross_amount?: number | null
           id?: string
           invoice_date?: string | null
           invoice_number?: string | null
           is_apportionable?: boolean
           notes?: string | null
+          paid_date?: string | null
           property_id: string
           receipt_url?: string | null
           unit_id?: string | null
           updated_at?: string
           user_id: string
+          vat_rate?: number | null
           vendor?: string | null
         }
         Update: {
@@ -192,16 +198,19 @@ export type Database = {
           billing_period_start?: string
           cost_type?: Database["public"]["Enums"]["operating_cost_type"]
           created_at?: string
+          gross_amount?: number | null
           id?: string
           invoice_date?: string | null
           invoice_number?: string | null
           is_apportionable?: boolean
           notes?: string | null
+          paid_date?: string | null
           property_id?: string
           receipt_url?: string | null
           unit_id?: string | null
           updated_at?: string
           user_id?: string
+          vat_rate?: number | null
           vendor?: string | null
         }
         Relationships: [

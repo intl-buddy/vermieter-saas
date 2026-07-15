@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { Receipt } from "lucide-react";
 import type { Database } from "@repo/core";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PropertyForm } from "../PropertyForm";
@@ -76,6 +78,15 @@ export default async function ObjektDetailPage({
     .select("id, label, unit_type, floor, living_area, rooms, notes")
     .eq("property_id", id)
     .order("label", { ascending: true });
+
+  // Belege dieses Objekts im laufenden Kalenderjahr (nur Anzahl)
+  const belegeYear = new Date().getFullYear();
+  const { count: belegeCount } = await supabase
+    .from("operating_costs_records")
+    .select("id", { count: "exact", head: true })
+    .eq("property_id", id)
+    .gte("invoice_date", `${belegeYear}-01-01`)
+    .lte("invoice_date", `${belegeYear}-12-31`);
 
   // Aktive Mietverhältnisse (move_out_date IS NULL) je Einheit separat laden
   // und im Speicher zuordnen – vermeidet Mehrdeutigkeiten beim Embedded-Filter.
@@ -264,6 +275,32 @@ export default async function ObjektDetailPage({
             })}
           </div>
         )}
+      </section>
+
+      <section className="mt-10">
+        <h2 className="mb-3 text-lg font-semibold">Belege</h2>
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
+            <div className="flex items-center gap-3">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-gold-100 text-gold-700">
+                <Receipt className="size-5" />
+              </span>
+              <div>
+                <div className="font-semibold">
+                  {belegeCount ?? 0} Belege in {belegeYear}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Betriebskosten-Belege dieses Objekts
+                </div>
+              </div>
+            </div>
+            <Button asChild variant="outline">
+              <Link href={`/belege?objekt=${property.id}`}>
+                Belege ansehen
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </section>
     </AppShell>
   );

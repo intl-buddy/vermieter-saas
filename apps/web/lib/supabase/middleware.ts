@@ -11,6 +11,7 @@ const PROTECTED_PREFIXES = [
   "/objekte",
   "/mieteingang",
   "/aufgaben",
+  "/belege",
   "/einstellungen",
   "/mahnungen",
 ];
