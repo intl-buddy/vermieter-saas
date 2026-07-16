@@ -13,7 +13,9 @@ export async function getUserAccessStatus(
 ): Promise<AccessStatus> {
   const { data } = await supabase
     .from("users")
-    .select("subscription_status, trial_ends_at, current_period_end, access_until")
+    .select(
+      "subscription_status, trial_ends_at, current_period_end, subscription_id, cancel_at_period_end, access_until",
+    )
     .eq("id", userId)
     .maybeSingle();
   return data ? getAccessStatus(data) : "locked";

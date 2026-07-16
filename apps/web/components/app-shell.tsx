@@ -124,7 +124,9 @@ async function getAccessSummary(): Promise<AccessSummary | null> {
 
     const { data: profile } = await supabase
       .from("users")
-      .select("subscription_status, trial_ends_at, current_period_end, access_until")
+      .select(
+        "subscription_status, trial_ends_at, current_period_end, subscription_id, cancel_at_period_end, access_until",
+      )
       .eq("id", user.id)
       .maybeSingle();
     if (!profile) return null;

@@ -41,7 +41,9 @@ export async function promoteExpiredToReadonly(
   // Kandidaten: noch keine Lesefrist, nicht gelöscht, kein aktives Abo.
   const { data: candidates } = await admin
     .from("users")
-    .select("id, subscription_status, trial_ends_at, current_period_end")
+    .select(
+      "id, subscription_status, trial_ends_at, current_period_end, subscription_id, cancel_at_period_end",
+    )
     .is("access_until", null)
     .is("deleted_at", null)
     .neq("subscription_status", "active");
@@ -60,6 +62,8 @@ export async function promoteExpiredToReadonly(
         subscription_status: u.subscription_status,
         trial_ends_at: u.trial_ends_at,
         current_period_end: u.current_period_end,
+        subscription_id: u.subscription_id,
+        cancel_at_period_end: u.cancel_at_period_end,
         access_until: null,
       },
       now,

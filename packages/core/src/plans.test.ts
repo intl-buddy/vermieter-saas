@@ -126,6 +126,110 @@ describe("getAccessStatus", () => {
   });
 });
 
+describe("getAccessStatus – Schreibzugriff & Grenzfälle", () => {
+  it("frisch registrierter Trial (Status trialing, kein Abo) → trial mit Schreibzugriff", () => {
+    const status = getAccessStatus(
+      {
+        subscription_status: "trialing",
+        trial_ends_at: inDays(14),
+        current_period_end: null,
+        subscription_id: null,
+        cancel_at_period_end: false,
+        access_until: null,
+      },
+      NOW,
+    );
+    expect(status).toBe("trial");
+    expect(canWrite(status)).toBe(true);
+  });
+
+  it("Trial läuft heute ab (in wenigen Stunden) → noch trial", () => {
+    const soon = new Date(NOW.getTime() + 3 * 3_600_000).toISOString();
+    expect(
+      getAccessStatus(
+        {
+          subscription_status: "trialing",
+          trial_ends_at: soon,
+          current_period_end: null,
+        },
+        NOW,
+      ),
+    ).toBe("trial");
+  });
+
+  it("Stripe-Trial mit hinterlegtem Abo → active", () => {
+    expect(
+      getAccessStatus(
+        {
+          subscription_status: "trialing",
+          trial_ends_at: null,
+          current_period_end: inDays(20),
+          subscription_id: "sub_123",
+        },
+        NOW,
+      ),
+    ).toBe("active");
+  });
+
+  it("Abo gekündigt, aber Periode läuft noch → active", () => {
+    const status = getAccessStatus(
+      {
+        subscription_status: "active",
+        trial_ends_at: null,
+        current_period_end: inDays(12),
+        cancel_at_period_end: true,
+      },
+      NOW,
+    );
+    expect(status).toBe("active");
+    expect(canWrite(status)).toBe(true);
+  });
+
+  it("gekündigt (Status canceled) mit cancel_at_period_end und laufender Periode → active", () => {
+    expect(
+      getAccessStatus(
+        {
+          subscription_status: "canceled",
+          trial_ends_at: null,
+          current_period_end: inDays(5),
+          cancel_at_period_end: true,
+        },
+        NOW,
+      ),
+    ).toBe("active");
+  });
+
+  it("Trial abgelaufen, nie ein Abo, keine Lesefrist → locked", () => {
+    const status = getAccessStatus(
+      {
+        subscription_status: "trialing",
+        trial_ends_at: inDays(-1),
+        current_period_end: null,
+        subscription_id: null,
+        access_until: null,
+      },
+      NOW,
+    );
+    expect(status).toBe("locked");
+    expect(canWrite(status)).toBe(false);
+  });
+
+  it("Abo beendet mit access_until in der Zukunft → readonly", () => {
+    const status = getAccessStatus(
+      {
+        subscription_status: "canceled",
+        trial_ends_at: null,
+        current_period_end: inDays(-30),
+        cancel_at_period_end: false,
+        access_until: inDays(160),
+      },
+      NOW,
+    );
+    expect(status).toBe("readonly");
+    expect(canWrite(status)).toBe(false);
+  });
+});
+
 describe("canWrite", () => {
   it("nur active und trial dürfen schreiben", () => {
     expect(canWrite("active")).toBe(true);

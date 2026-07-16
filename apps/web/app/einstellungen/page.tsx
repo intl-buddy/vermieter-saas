@@ -37,6 +37,8 @@ export default async function EinstellungenPage() {
     subscription_status: subscriptionStatus,
     trial_ends_at: profile?.trial_ends_at ?? null,
     current_period_end: profile?.current_period_end ?? null,
+    subscription_id: profile?.subscription_id ?? null,
+    cancel_at_period_end: profile?.cancel_at_period_end ?? false,
     access_until: profile?.access_until ?? null,
   });
   const unitCount = unitsResult.count ?? 0;

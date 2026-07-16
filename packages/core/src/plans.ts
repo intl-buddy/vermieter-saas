@@ -111,6 +111,10 @@ export interface AccessInput {
   trial_ends_at: string | null;
   /** Ende der bezahlten Periode (ISO) oder null. */
   current_period_end: string | null;
+  /** Stripe-Abo-ID (gesetzt = es gab/gibt ein Abo). Optional. */
+  subscription_id?: string | null;
+  /** Zum Periodenende gekündigt? Optional. */
+  cancel_at_period_end?: boolean | null;
   /** Ende des Lesezugriffs nach Abo-Ende/Trial-Ablauf (ISO) oder null. */
   access_until?: string | null;
 }
@@ -124,36 +128,52 @@ export const READONLY_MONTHS = 6;
 export const DELETION_GRACE_DAYS = 7;
 
 /**
- * Ermittelt den Zugriffsstatus:
- *  - 'active'   – aktives Abo (oder past_due innerhalb der 7-Tage-Kulanz)
- *  - 'trial'    – kein aktives Abo, Testzeitraum läuft noch
- *  - 'readonly' – kein aktiver Zugriff, aber Lesefrist (access_until) läuft noch
- *  - 'locked'   – kein Zugriff mehr
+ * Ermittelt den Zugriffsstatus. Voller Schreibzugriff ('active'/'trial') gilt:
+ *  - aktives Abo (subscription_status 'active'),
+ *  - Stripe-Trial mit hinterlegtem Abo (Status 'trialing' + subscription_id),
+ *  - gekündigtes Abo, das bis Periodenende bezahlt ist
+ *    (cancel_at_period_end && current_period_end > now),
+ *  - Zahlung überfällig innerhalb der 7-Tage-Kulanz,
+ *  - laufender App-Testzeitraum (trial_ends_at > now, kein beendetes Abo).
+ * 'readonly': kein Schreibzugriff, aber access_until > now.
+ * 'locked': alles andere.
  */
 export function getAccessStatus(user: AccessInput, now: Date = new Date()): AccessStatus {
   const nowMs = now.getTime();
   const status = user.subscription_status;
+  const periodActive =
+    !!user.current_period_end &&
+    new Date(user.current_period_end).getTime() > nowMs;
 
+  // 1) Aktives, bezahltes Abo (inkl. Stripe-Trial mit hinterlegtem Abo).
   if (status === "active") return "active";
+  if (status === "trialing" && user.subscription_id) return "active";
 
-  if (status === "past_due") {
-    if (user.current_period_end) {
-      const graceEnd =
-        new Date(user.current_period_end).getTime() + PAST_DUE_GRACE_DAYS * DAY_MS;
-      if (nowMs < graceEnd) return "active";
-    }
-    // sonst: Lesemodus/gesperrt (siehe unten)
-  } else if (status !== "canceled") {
-    // trialing / incomplete: Testzeitraum kann noch laufen.
-    if (user.trial_ends_at && new Date(user.trial_ends_at).getTime() > nowMs) {
-      return "trial";
-    }
+  // 2) Gekündigt, aber bis Periodenende bezahlt → voller Zugriff bis dahin.
+  if (user.cancel_at_period_end && periodActive) return "active";
+
+  // 3) Zahlung überfällig, aber innerhalb der Kulanzfrist.
+  if (status === "past_due" && user.current_period_end) {
+    const graceEnd =
+      new Date(user.current_period_end).getTime() + PAST_DUE_GRACE_DAYS * DAY_MS;
+    if (nowMs < graceEnd) return "active";
   }
 
-  // Kein aktiver Zugriff mehr → Lesemodus, solange die Lesefrist läuft.
+  // 4) Laufender App-Testzeitraum (kein beendetes Abo) → voller Schreibzugriff.
+  if (
+    status !== "canceled" &&
+    user.trial_ends_at &&
+    new Date(user.trial_ends_at).getTime() > nowMs
+  ) {
+    return "trial";
+  }
+
+  // 5) Kein aktiver Zugriff mehr → Lesemodus, solange die Lesefrist läuft.
   if (user.access_until && new Date(user.access_until).getTime() > nowMs) {
     return "readonly";
   }
+
+  // 6) sonst gesperrt.
   return "locked";
 }
 

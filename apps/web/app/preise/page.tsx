@@ -21,7 +21,9 @@ export default async function PreisePage({
   if (user) {
     const { data: profile } = await supabase
       .from("users")
-      .select("plan, subscription_status, trial_ends_at, current_period_end, access_until")
+      .select(
+        "plan, subscription_status, trial_ends_at, current_period_end, subscription_id, cancel_at_period_end, access_until",
+      )
       .eq("id", user.id)
       .maybeSingle();
     if (profile) {
