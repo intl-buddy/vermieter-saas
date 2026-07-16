@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getAccessStatus } from "@repo/core";
 
 /**
  * Aktualisiert bei jedem Request die Supabase-Session (Token-Refresh) und
@@ -16,6 +17,11 @@ const PROTECTED_PREFIXES = [
   "/einstellungen",
   "/mahnungen",
 ];
+
+// Geschützte Pfade, auf denen das Abo-Gating NICHT greift: In den
+// Einstellungen soll ein gesperrter Nutzer weiterhin sein Abo verwalten
+// können.
+const GATING_EXEMPT_PREFIXES = ["/einstellungen"];
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -57,6 +63,29 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+
+  // Abo-Gating: Nutzer ohne aktiven Zugriff (Trial abgelaufen, gekündigt,
+  // Zahlung länger überfällig) werden auf /preise umgeleitet – außer auf den
+  // ausgenommenen Pfaden (Abo-Verwaltung in den Einstellungen).
+  if (user && isProtected) {
+    const isExempt = GATING_EXEMPT_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    );
+    if (!isExempt) {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("subscription_status, trial_ends_at, current_period_end")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profile && getAccessStatus(profile) === "locked") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/preise";
+        url.search = "gesperrt=1";
+        return NextResponse.redirect(url);
+      }
+    }
   }
 
   return supabaseResponse;

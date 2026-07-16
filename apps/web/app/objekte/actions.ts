@@ -2,7 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import type { PostgrestError } from "@supabase/supabase-js";
-import type { Database } from "@repo/core";
+import {
+  getAccessStatus,
+  isPlanKey,
+  nextPlanName,
+  unitLimitFor,
+  PLANS,
+  type Database,
+} from "@repo/core";
 import { createClient } from "../../lib/supabase/server";
 import { parseDecimal, parseIntStrict } from "../../lib/parse";
 
@@ -29,7 +36,59 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export type FormState = {
   error?: string;
   success?: string;
+  /**
+   * Gesetzt, wenn das Einheiten-Limit des Pakets erreicht ist. Das Formular
+   * zeigt dann einen Upgrade-Dialog statt einer einfachen Fehlermeldung.
+   */
+  limit?: {
+    planLabel: string;
+    limit: number;
+    nextPlan: string;
+  };
 };
+
+/**
+ * Prüft, ob der Nutzer im Rahmen seines Pakets eine weitere Einheit anlegen
+ * darf. Gibt bei Überschreitung einen FormState mit `limit` zurück, sonst null.
+ */
+async function checkUnitLimit(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<FormState | null> {
+  const { data: profile } = await supabase
+    .from("users")
+    .select("plan, subscription_status, trial_ends_at, current_period_end")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const plan = profile?.plan ?? "trial";
+  const access = getAccessStatus({
+    subscription_status: profile?.subscription_status ?? "trialing",
+    trial_ends_at: profile?.trial_ends_at ?? null,
+    current_period_end: profile?.current_period_end ?? null,
+  });
+
+  const limit = unitLimitFor(plan, access);
+  if (limit === null) return null; // Enterprise: unbegrenzt
+
+  const { count } = await supabase
+    .from("units")
+    .select("id", { count: "exact", head: true });
+  if ((count ?? 0) < limit) return null;
+
+  const planLabel =
+    access === "trial"
+      ? "Testzeitraum"
+      : isPlanKey(plan)
+        ? PLANS[plan].name
+        : plan;
+  const nextPlan = nextPlanName(limit);
+
+  return {
+    limit: { planLabel, limit, nextPlan },
+    error: `Dein Paket ${planLabel} umfasst bis zu ${limit} Einheiten. Upgrade auf ${nextPlan}, um weitere anzulegen.`,
+  };
+}
 
 /**
  * Übersetzt Postgres-Fehler (Unique-/Check-Verletzungen) in deutsche Texte.
@@ -257,6 +316,10 @@ export async function createUnit(
   if ("error" in fields) return { error: fields.error };
 
   const supabase = await createClient();
+
+  const limitState = await checkUnitLimit(supabase, auth.userId);
+  if (limitState) return limitState;
+
   const { error } = await supabase.from("units").insert({
     user_id: auth.userId,
     property_id: propertyId,

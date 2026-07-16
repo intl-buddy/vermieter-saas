@@ -16,6 +16,7 @@ import { AppShell } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { CreateRecordDialog } from "@/app/belege/CreateRecordDialog";
 import { CreateTaskDialog } from "@/app/aufgaben/CreateTaskDialog";
+import { CheckoutToast } from "./CheckoutToast";
 import { cn } from "@/lib/utils";
 
 const ACTION_CARD_CLS =
@@ -57,7 +58,12 @@ function todayIso(): string {
   return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 10);
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string }>;
+}) {
+  const { checkout } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -154,6 +160,7 @@ export default async function DashboardPage() {
 
   return (
     <AppShell title="Dashboard" userEmail={user.email ?? ""}>
+      <CheckoutToast success={checkout === "success"} />
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Hallo{firstName ? `, ${firstName}` : ""} 👋

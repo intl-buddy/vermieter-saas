@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { createUnit, updateUnit, type FormState } from "../actions";
@@ -15,6 +16,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const initialState: FormState = {};
 
@@ -56,9 +66,15 @@ export function UnitForm({
   const action = mode === "create" ? createUnit : updateUnit;
   const [state, formAction] = useActionState(action, initialState);
   const formRef = useRef<HTMLFormElement>(null);
+  const [limitOpen, setLimitOpen] = useState(false);
   const uid = unit?.id ?? "new";
 
   useEffect(() => {
+    // Limit erreicht: Upgrade-Dialog statt Toast anzeigen.
+    if (state.limit) {
+      setLimitOpen(true);
+      return;
+    }
     if (state.error) toast.error(state.error);
     if (state.success) {
       toast.success(state.success);
@@ -67,6 +83,28 @@ export function UnitForm({
   }, [state, mode]);
 
   return (
+    <>
+    <Dialog open={limitOpen} onOpenChange={setLimitOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Einheiten-Limit erreicht</DialogTitle>
+          <DialogDescription>
+            {state.limit
+              ? `Dein Paket ${state.limit.planLabel} umfasst bis zu ${state.limit.limit} Einheiten. Upgrade auf ${state.limit.nextPlan}, um weitere anzulegen.`
+              : null}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Später</Button>
+          </DialogClose>
+          <Link href="/preise">
+            <Button>Paket ansehen</Button>
+          </Link>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="property_id" value={propertyId} />
       {mode === "edit" && unit ? (
@@ -153,5 +191,6 @@ export function UnitForm({
         />
       </div>
     </form>
+    </>
   );
 }

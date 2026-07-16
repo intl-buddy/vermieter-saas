@@ -871,8 +871,10 @@ export type Database = {
           address_zip: string | null
           bank_name: string | null
           bic: string | null
+          cancel_at_period_end: boolean
           company_name: string | null
           created_at: string
+          current_period_end: string | null
           dunning_deadline_days: number
           dunning_fee: number
           email: string
@@ -881,7 +883,9 @@ export type Database = {
           id: string
           phone: string | null
           plan: Database["public"]["Enums"]["subscription_plan"]
+          price_id: string | null
           stripe_customer_id: string | null
+          subscription_id: string | null
           subscription_status: Database["public"]["Enums"]["subscription_status"]
           trial_ends_at: string | null
           updated_at: string
@@ -892,8 +896,10 @@ export type Database = {
           address_zip?: string | null
           bank_name?: string | null
           bic?: string | null
+          cancel_at_period_end?: boolean
           company_name?: string | null
           created_at?: string
+          current_period_end?: string | null
           dunning_deadline_days?: number
           dunning_fee?: number
           email: string
@@ -902,7 +908,9 @@ export type Database = {
           id?: string
           phone?: string | null
           plan?: Database["public"]["Enums"]["subscription_plan"]
+          price_id?: string | null
           stripe_customer_id?: string | null
+          subscription_id?: string | null
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
           trial_ends_at?: string | null
           updated_at?: string
@@ -913,8 +921,10 @@ export type Database = {
           address_zip?: string | null
           bank_name?: string | null
           bic?: string | null
+          cancel_at_period_end?: boolean
           company_name?: string | null
           created_at?: string
+          current_period_end?: string | null
           dunning_deadline_days?: number
           dunning_fee?: number
           email?: string
@@ -923,7 +933,9 @@ export type Database = {
           id?: string
           phone?: string | null
           plan?: Database["public"]["Enums"]["subscription_plan"]
+          price_id?: string | null
           stripe_customer_id?: string | null
+          subscription_id?: string | null
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
           trial_ends_at?: string | null
           updated_at?: string
@@ -1013,7 +1025,13 @@ export type Database = {
         | "non_apportionable"
       payer_type: "tenant" | "jobcenter" | "other"
       payment_source: "manual" | "csv_import"
-      subscription_plan: "free" | "starter" | "pro" | "business"
+      subscription_plan:
+        | "trial"
+        | "bronze"
+        | "silber"
+        | "gold"
+        | "platin"
+        | "enterprise"
       subscription_status:
         | "trialing"
         | "active"
@@ -1197,7 +1215,7 @@ export const Constants = {
       ],
       payer_type: ["tenant", "jobcenter", "other"],
       payment_source: ["manual", "csv_import"],
-      subscription_plan: ["free", "starter", "pro", "business"],
+      subscription_plan: ["trial", "bronze", "silber", "gold", "platin", "enterprise"],
       subscription_status: [
         "trialing",
         "active",
