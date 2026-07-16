@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { Database } from "@repo/core";
 import type { SupabaseServerClient } from "@/lib/supabase/server";
 import { createClient } from "@/lib/supabase/server";
+import { assertWriteAccess } from "@/lib/access";
 import { parseDecimal } from "@/lib/parse";
 import { COST_TYPE_LABELS, ALLOCATION_OPTIONS } from "./labels";
 
@@ -136,6 +137,8 @@ export async function createRecord(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Bitte melde dich erneut an." };
+  const writeError = await assertWriteAccess(supabase, user.id);
+  if (writeError) return { error: writeError };
 
   const fields = readRecordFields(formData);
   if ("error" in fields) return { error: fields.error };
@@ -178,6 +181,8 @@ export async function updateRecord(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Bitte melde dich erneut an." };
+  const writeError = await assertWriteAccess(supabase, user.id);
+  if (writeError) return { error: writeError };
 
   const id = String(formData.get("id") ?? "").trim();
   if (!id) return { error: "Beleg konnte nicht ermittelt werden." };
@@ -230,6 +235,8 @@ export async function deleteRecord(id: string): Promise<{ error?: string }> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Bitte melde dich erneut an." };
+  const writeError = await assertWriteAccess(supabase, user.id);
+  if (writeError) return { error: writeError };
 
   const { data: existing } = await supabase
     .from("operating_costs_records")

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { assertWriteAccess } from "@/lib/access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +42,10 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
+  }
+  const writeError = await assertWriteAccess(supabase, user.id);
+  if (writeError) {
+    return NextResponse.json({ error: writeError }, { status: 403 });
   }
 
   let body: { dunningId?: string; email?: string };

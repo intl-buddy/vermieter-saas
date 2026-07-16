@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { Database } from "@repo/core";
 import { createClient } from "../../lib/supabase/server";
+import { assertWriteAccess } from "../../lib/access";
 
 type PayerType = Database["public"]["Enums"]["payer_type"];
 
@@ -66,6 +67,8 @@ export async function recordPayment(
   if (!user) {
     return { error: "Bitte melde dich erneut an." };
   }
+  const writeError = await assertWriteAccess(supabase, user.id);
+  if (writeError) return { error: writeError };
 
   const { error } = await supabase.from("rent_payments").insert({
     user_id: user.id,

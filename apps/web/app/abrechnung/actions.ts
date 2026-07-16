@@ -12,6 +12,7 @@ import {
   type Type35a,
 } from "@repo/core";
 import { createClient } from "@/lib/supabase/server";
+import { assertWriteAccess } from "@/lib/access";
 import { renderBillingStatementPdf } from "@/lib/pdf/billingStatement";
 import { COST_TYPE_LABELS } from "@/app/belege/labels";
 
@@ -279,6 +280,8 @@ export async function finalizeBilling(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Bitte melde dich erneut an." };
+  const writeError = await assertWriteAccess(supabase, user.id);
+  if (writeError) return { error: writeError };
 
   const data = await assembleData(
     supabase,
@@ -576,6 +579,8 @@ export async function deleteBillingRun(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Bitte melde dich erneut an." };
+  const writeError = await assertWriteAccess(supabase, user.id);
+  if (writeError) return { error: writeError };
 
   // PDF-Pfade der Statements ermitteln und aus dem Bucket entfernen.
   const { data: statements } = await supabase

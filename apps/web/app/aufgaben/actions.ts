@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { Database } from "@repo/core";
 import { createClient } from "@/lib/supabase/server";
+import { requireWriteAccess, READONLY_WRITE_ERROR } from "@/lib/access";
 import { parseIntStrict } from "@/lib/parse";
 
 type TaskInterval = Database["public"]["Enums"]["task_interval"];
@@ -19,15 +20,11 @@ export type TaskFormState = {
   success?: string;
 };
 
+// Schreibende Aufgaben-Actions: zentrale Auth- + Schreibrechte-Prüfung.
 async function requireUserId(): Promise<
   { userId: string } | { error: string }
 > {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Bitte melde dich erneut an." };
-  return { userId: user.id };
+  return requireWriteAccess();
 }
 
 /** Optionaler Fremdschlüssel: leerer String → null. */
@@ -79,6 +76,8 @@ export async function createAdHocTask(
 
 /** Aufgabe abhaken: status='done', completed_at=jetzt. */
 export async function completeTask(id: string): Promise<void> {
+  const guard = await requireWriteAccess();
+  if ("error" in guard) throw new Error(READONLY_WRITE_ERROR);
   const supabase = await createClient();
   await supabase
     .from("generated_tasks")
@@ -89,6 +88,8 @@ export async function completeTask(id: string): Promise<void> {
 
 /** Abhaken rückgängig machen: zurück auf 'open' (Cron markiert ggf. erneut). */
 export async function reopenTask(id: string): Promise<void> {
+  const guard = await requireWriteAccess();
+  if ("error" in guard) throw new Error(READONLY_WRITE_ERROR);
   const supabase = await createClient();
   await supabase
     .from("generated_tasks")
@@ -223,6 +224,8 @@ export async function toggleTemplateActive(
   id: string,
   isActive: boolean,
 ): Promise<void> {
+  const guard = await requireWriteAccess();
+  if ("error" in guard) throw new Error(READONLY_WRITE_ERROR);
   const supabase = await createClient();
   await supabase
     .from("task_templates")

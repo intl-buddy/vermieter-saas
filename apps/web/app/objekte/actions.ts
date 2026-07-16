@@ -11,6 +11,7 @@ import {
   type Database,
 } from "@repo/core";
 import { createClient } from "../../lib/supabase/server";
+import { requireWriteAccess } from "../../lib/access";
 import { parseDecimal, parseIntStrict } from "../../lib/parse";
 
 type UnitType = Database["public"]["Enums"]["unit_type"];
@@ -103,15 +104,12 @@ function describeDbError(
   return `Speichern fehlgeschlagen: ${error.message}`;
 }
 
+// Alle Objekt-Actions sind schreibend → Auth + Schreibrechte (Abo/Trial)
+// werden zentral geprüft. Im Lesemodus wird abgelehnt.
 async function requireUserId(): Promise<
   { userId: string } | { error: string }
 > {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Bitte melde dich erneut an." };
-  return { userId: user.id };
+  return requireWriteAccess();
 }
 
 // ---------------------------------------------------------------------------

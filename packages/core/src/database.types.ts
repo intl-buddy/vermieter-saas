@@ -173,6 +173,24 @@ export type Database = {
           },
         ]
       }
+      deletion_log: {
+        Row: {
+          deleted_at: string
+          id: string
+          user_id_hash: string
+        }
+        Insert: {
+          deleted_at?: string
+          id?: string
+          user_id_hash: string
+        }
+        Update: {
+          deleted_at?: string
+          id?: string
+          user_id_hash?: string
+        }
+        Relationships: []
+      }
       dunning_letters: {
         Row: {
           amount_due: number
@@ -866,6 +884,7 @@ export type Database = {
       }
       users: {
         Row: {
+          access_until: string | null
           address_city: string | null
           address_street: string | null
           address_zip: string | null
@@ -875,6 +894,8 @@ export type Database = {
           company_name: string | null
           created_at: string
           current_period_end: string | null
+          deleted_at: string | null
+          deletion_warned_at: string | null
           dunning_deadline_days: number
           dunning_fee: number
           email: string
@@ -891,6 +912,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_until?: string | null
           address_city?: string | null
           address_street?: string | null
           address_zip?: string | null
@@ -900,6 +922,8 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           current_period_end?: string | null
+          deleted_at?: string | null
+          deletion_warned_at?: string | null
           dunning_deadline_days?: number
           dunning_fee?: number
           email: string
@@ -916,6 +940,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_until?: string | null
           address_city?: string | null
           address_street?: string | null
           address_zip?: string | null
@@ -925,6 +950,8 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           current_period_end?: string | null
+          deleted_at?: string | null
+          deletion_warned_at?: string | null
           dunning_deadline_days?: number
           dunning_fee?: number
           email?: string

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "../../lib/supabase/server";
+import { assertWriteAccess } from "../../lib/access";
 import { parseDecimal, parseIntStrict } from "../../lib/parse";
 
 export type ProfileState = {
@@ -25,6 +26,8 @@ export async function updateProfile(
   if (!user) {
     return { error: "Bitte melde dich erneut an." };
   }
+  const writeError = await assertWriteAccess(supabase, user.id);
+  if (writeError) return { error: writeError };
 
   const fullName = String(formData.get("full_name") ?? "").trim();
   const companyName = String(formData.get("company_name") ?? "").trim();

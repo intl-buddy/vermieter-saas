@@ -8,8 +8,14 @@ export type PlanKey = "bronze" | "silber" | "gold" | "platin";
 
 export type BillingInterval = "monthly" | "yearly";
 
-/** Zugriffsstatus eines Nutzers für das Gating (Trial / aktiv / gesperrt). */
-export type AccessStatus = "trial" | "active" | "locked";
+/**
+ * Zugriffsstatus eines Nutzers für das Gating:
+ *  - 'trial'    – Testzeitraum läuft
+ *  - 'active'   – aktives (bezahltes) Abo
+ *  - 'readonly' – kein aktives Abo, aber Lesezugriff bis `access_until`
+ *  - 'locked'   – kein Zugriff mehr (Lesefrist abgelaufen)
+ */
+export type AccessStatus = "trial" | "active" | "readonly" | "locked";
 
 export interface PlanConfig {
   key: PlanKey;
@@ -105,17 +111,24 @@ export interface AccessInput {
   trial_ends_at: string | null;
   /** Ende der bezahlten Periode (ISO) oder null. */
   current_period_end: string | null;
+  /** Ende des Lesezugriffs nach Abo-Ende/Trial-Ablauf (ISO) oder null. */
+  access_until?: string | null;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Kulanzfrist nach Periodenende, bevor bei past_due gesperrt wird. */
 const PAST_DUE_GRACE_DAYS = 7;
+/** Dauer des Lesezugriffs nach Abo-Ende bzw. Trial-Ablauf. */
+export const READONLY_MONTHS = 6;
+/** Karenz nach Ablauf des Lesezugriffs, bevor gelöscht wird. */
+export const DELETION_GRACE_DAYS = 7;
 
 /**
  * Ermittelt den Zugriffsstatus:
- *  - 'active'  – aktives Abo (oder past_due innerhalb der 7-Tage-Kulanz)
- *  - 'trial'   – kein aktives Abo, Testzeitraum läuft noch
- *  - 'locked'  – Testzeitraum abgelaufen ohne Abo, gekündigt oder past_due > 7 Tage
+ *  - 'active'   – aktives Abo (oder past_due innerhalb der 7-Tage-Kulanz)
+ *  - 'trial'    – kein aktives Abo, Testzeitraum läuft noch
+ *  - 'readonly' – kein aktiver Zugriff, aber Lesefrist (access_until) läuft noch
+ *  - 'locked'   – kein Zugriff mehr
  */
 export function getAccessStatus(user: AccessInput, now: Date = new Date()): AccessStatus {
   const nowMs = now.getTime();
@@ -129,16 +142,31 @@ export function getAccessStatus(user: AccessInput, now: Date = new Date()): Acce
         new Date(user.current_period_end).getTime() + PAST_DUE_GRACE_DAYS * DAY_MS;
       if (nowMs < graceEnd) return "active";
     }
-    return "locked";
+    // sonst: Lesemodus/gesperrt (siehe unten)
+  } else if (status !== "canceled") {
+    // trialing / incomplete: Testzeitraum kann noch laufen.
+    if (user.trial_ends_at && new Date(user.trial_ends_at).getTime() > nowMs) {
+      return "trial";
+    }
   }
 
-  if (status === "canceled") return "locked";
-
-  // Kein aktives Abo → Testzeitraum entscheidet.
-  if (user.trial_ends_at && new Date(user.trial_ends_at).getTime() > nowMs) {
-    return "trial";
+  // Kein aktiver Zugriff mehr → Lesemodus, solange die Lesefrist läuft.
+  if (user.access_until && new Date(user.access_until).getTime() > nowMs) {
+    return "readonly";
   }
   return "locked";
+}
+
+/** Darf der Nutzer schreibende Aktionen ausführen? Nur mit aktivem Abo/Trial. */
+export function canWrite(status: AccessStatus): boolean {
+  return status === "active" || status === "trial";
+}
+
+/** Aufgerundete Tage bis zu einem Zeitpunkt (ISO) – nie negativ. */
+export function daysUntil(dateIso: string | null, now: Date = new Date()): number {
+  if (!dateIso) return 0;
+  const diff = new Date(dateIso).getTime() - now.getTime();
+  return Math.max(0, Math.ceil(diff / DAY_MS));
 }
 
 /** Verbleibende (aufgerundete) Tage im Testzeitraum – nie negativ. */

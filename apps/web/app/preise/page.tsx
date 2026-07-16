@@ -21,7 +21,7 @@ export default async function PreisePage({
   if (user) {
     const { data: profile } = await supabase
       .from("users")
-      .select("plan, subscription_status, trial_ends_at, current_period_end")
+      .select("plan, subscription_status, trial_ends_at, current_period_end, access_until")
       .eq("id", user.id)
       .maybeSingle();
     if (profile) {
@@ -69,12 +69,24 @@ export default async function PreisePage({
         {locked ? (
           <div className="mx-auto mb-8 max-w-2xl rounded-xl border border-gold-300 bg-gold-50 px-5 py-4 text-center text-sm text-neutral-700">
             <p className="font-semibold text-neutral-900">
-              Dein Testzeitraum ist abgelaufen.
+              {user
+                ? "Dein Zugang ist abgelaufen."
+                : "Dein Testzeitraum ist abgelaufen."}
             </p>
             <p className="mt-1">
-              Wähle ein Paket, um tefter weiter zu nutzen. Deine Daten bleiben
-              selbstverständlich erhalten.
+              Reaktiviere dein Abo, um tefter weiter zu nutzen – oder exportiere
+              deine Daten, bevor sie gelöscht werden.
             </p>
+            {user ? (
+              <div className="mt-3">
+                <a
+                  href="/api/datenexport"
+                  className="inline-block rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+                >
+                  Alle Daten exportieren (ZIP)
+                </a>
+              </div>
+            ) : null}
           </div>
         ) : null}
         {canceled ? (

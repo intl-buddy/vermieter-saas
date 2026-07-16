@@ -7,6 +7,7 @@ import { FooterLinks } from "@/components/footer-links";
 import { EinstellungenForm } from "./EinstellungenForm";
 import { KontoSection } from "./KontoSection";
 import { AboSection } from "./AboSection";
+import { DatenExportSection } from "./DatenExportSection";
 
 export const metadata = { title: "Einstellungen · tefter" };
 
@@ -23,7 +24,7 @@ export default async function EinstellungenPage() {
     supabase
       .from("users")
       .select(
-        "full_name, company_name, address_street, address_zip, address_city, phone, iban, bank_name, bic, dunning_fee, dunning_deadline_days, plan, subscription_status, subscription_id, trial_ends_at, current_period_end, cancel_at_period_end",
+        "full_name, company_name, address_street, address_zip, address_city, phone, iban, bank_name, bic, dunning_fee, dunning_deadline_days, plan, subscription_status, subscription_id, trial_ends_at, current_period_end, cancel_at_period_end, access_until",
       )
       .eq("id", user.id)
       .maybeSingle(),
@@ -36,6 +37,7 @@ export default async function EinstellungenPage() {
     subscription_status: subscriptionStatus,
     trial_ends_at: profile?.trial_ends_at ?? null,
     current_period_end: profile?.current_period_end ?? null,
+    access_until: profile?.access_until ?? null,
   });
   const unitCount = unitsResult.count ?? 0;
   const unitLimit = unitLimitFor(plan, access);
@@ -93,6 +95,14 @@ export default async function EinstellungenPage() {
           E-Mail-Adresse und Passwort ändern.
         </p>
         <KontoSection userEmail={user.email ?? ""} />
+      </div>
+
+      <div className="mt-10">
+        <h2 className="text-xl font-bold tracking-tight">Deine Daten</h2>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">
+          Exportiere jederzeit eine vollständige Kopie deiner Daten.
+        </p>
+        <DatenExportSection />
       </div>
 
       <Separator className="mt-12" />

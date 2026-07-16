@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "../../lib/supabase/server";
+import { assertWriteAccess } from "../../lib/access";
 import { parseDecimal } from "../../lib/parse";
 import { renderDunningLetterPdf } from "../../lib/pdf/dunningLetter";
 import { loadDunningLetterData } from "../../lib/pdf/loadDunningLetter";
@@ -37,6 +38,8 @@ export async function createDunning(
   if (!user) {
     return { error: "Bitte melde dich erneut an." };
   }
+  const writeError = await assertWriteAccess(supabase, user.id);
+  if (writeError) return { error: writeError };
 
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
   const levelRaw = String(formData.get("level") ?? "").trim();
@@ -152,6 +155,8 @@ export async function markDunningSent(
   if (!user) {
     return { error: "Bitte melde dich erneut an." };
   }
+  const writeError = await assertWriteAccess(supabase, user.id);
+  if (writeError) return { error: writeError };
 
   const id = String(formData.get("id") ?? "").trim();
   const tenantId = String(formData.get("tenant_id") ?? "").trim();

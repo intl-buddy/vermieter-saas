@@ -1,14 +1,19 @@
 import Link from "next/link";
-import { getAccessStatus, trialDaysRemaining } from "@repo/core";
+import {
+  getAccessStatus,
+  trialDaysRemaining,
+  type AccessStatus,
+} from "@repo/core";
 import { createClient } from "@/lib/supabase/server";
+import { formatDate } from "@/lib/format";
 import { BottomNav } from "@/components/bottom-nav";
 import { UserMenu } from "@/components/user-menu";
 
 /**
  * Grundgerüst für eingeloggte Seiten: schlanke Topbar oben, fixierte
  * Bottom-Bar unten (auf allen Geräten), Inhalt dazwischen mit ausreichend
- * Innenabstand, damit die Leisten nichts verdecken. Zeigt im Testzeitraum
- * dezent einen Hinweis mit Upgrade-Link.
+ * Innenabstand. Zeigt oben – je nach Zugriffsstatus – dezent einen
+ * Trial-Hinweis oder (im Lesemodus) das Löschbanner.
  */
 export async function AppShell({
   title,
@@ -19,7 +24,7 @@ export async function AppShell({
   userEmail: string;
   children: React.ReactNode;
 }) {
-  const trialDays = await getTrialDaysLeft();
+  const access = await getAccessSummary();
 
   return (
     <div className="min-h-dvh">
@@ -47,7 +52,7 @@ export async function AppShell({
       </header>
 
       <main className="mx-auto max-w-4xl px-4 pt-[76px] pb-[calc(92px+env(safe-area-inset-bottom))]">
-        {trialDays !== null ? (
+        {access?.status === "trial" ? (
           <Link
             href="/preise"
             className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-gold-200 bg-gold-50 px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-gold-100"
@@ -55,7 +60,7 @@ export async function AppShell({
             <span>
               Noch{" "}
               <strong className="font-semibold">
-                {trialDays} {trialDays === 1 ? "Tag" : "Tage"}
+                {access.trialDays} {access.trialDays === 1 ? "Tag" : "Tage"}
               </strong>{" "}
               Testzeitraum
             </span>
@@ -64,6 +69,33 @@ export async function AppShell({
             </span>
           </Link>
         ) : null}
+
+        {access?.status === "readonly" ? (
+          <div className="mb-4 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-800">
+            <p className="font-semibold">Dein Abo ist beendet – Lesemodus aktiv.</p>
+            <p className="mt-0.5 text-danger-700">
+              Du hast Lesezugriff
+              {access.accessUntil ? ` bis ${formatDate(access.accessUntil)}` : ""} –
+              danach werden deine Daten gelöscht. Bearbeiten ist nur mit aktivem
+              Abo möglich.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Link
+                href="/preise"
+                className="rounded-md bg-danger-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-danger-700"
+              >
+                Abo reaktivieren
+              </Link>
+              <a
+                href="/api/datenexport"
+                className="rounded-md border border-danger-300 bg-white px-3 py-1.5 text-xs font-semibold text-danger-700 hover:bg-danger-100"
+              >
+                Daten exportieren
+              </a>
+            </div>
+          </div>
+        ) : null}
+
         {children}
       </main>
 
@@ -72,12 +104,17 @@ export async function AppShell({
   );
 }
 
+interface AccessSummary {
+  status: AccessStatus;
+  trialDays: number;
+  accessUntil: string | null;
+}
+
 /**
- * Verbleibende Trial-Tage – oder null, wenn der Nutzer kein aktiver Trial ist
- * (aktives Abo bzw. gesperrt). Fehler werden geschluckt: der Hinweis ist
- * optional und darf keine Seite blockieren.
+ * Zugriffsstatus des eingeloggten Nutzers für die Banner-Anzeige. Fehler werden
+ * geschluckt: die Banner sind optional und dürfen keine Seite blockieren.
  */
-async function getTrialDaysLeft(): Promise<number | null> {
+async function getAccessSummary(): Promise<AccessSummary | null> {
   try {
     const supabase = await createClient();
     const {
@@ -87,13 +124,16 @@ async function getTrialDaysLeft(): Promise<number | null> {
 
     const { data: profile } = await supabase
       .from("users")
-      .select("subscription_status, trial_ends_at, current_period_end")
+      .select("subscription_status, trial_ends_at, current_period_end, access_until")
       .eq("id", user.id)
       .maybeSingle();
     if (!profile) return null;
 
-    if (getAccessStatus(profile) !== "trial") return null;
-    return trialDaysRemaining(profile.trial_ends_at);
+    return {
+      status: getAccessStatus(profile),
+      trialDays: trialDaysRemaining(profile.trial_ends_at),
+      accessUntil: profile.access_until,
+    };
   } catch {
     return null;
   }

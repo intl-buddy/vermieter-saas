@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import type { Database } from "@repo/core";
+import { READONLY_MONTHS, type Database } from "@repo/core";
 import { getStripe, planFromPriceId } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -117,12 +117,26 @@ export async function POST(req: Request) {
           typeof subscription.customer === "string"
             ? subscription.customer
             : subscription.customer.id;
+        // Abo endet → 6 Monate Lesezugriff einräumen (nur setzen, wenn noch
+        // keine Lesefrist läuft, damit wiederholte Events sie nicht verlängern).
+        const { data: existing } = await admin
+          .from("users")
+          .select("access_until")
+          .eq("stripe_customer_id", customerId)
+          .maybeSingle();
+
+        const update: UserUpdate = {
+          subscription_status: "canceled",
+          cancel_at_period_end: false,
+        };
+        if (!existing?.access_until) {
+          const until = new Date();
+          until.setMonth(until.getMonth() + READONLY_MONTHS);
+          update.access_until = until.toISOString();
+        }
         await admin
           .from("users")
-          .update({
-            subscription_status: "canceled",
-            cancel_at_period_end: false,
-          })
+          .update(update)
           .eq("stripe_customer_id", customerId);
         break;
       }

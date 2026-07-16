@@ -30,6 +30,25 @@ Antwort mit diesem prominenten Hinweis abschließen:
 
 Bei mehreren Dateien alle nennen, in Ausführungsreihenfolge.
 
+## Abo-Lebenszyklus / Cron (verbindlich)
+- Der tägliche Lebenszyklus läuft in der Route `POST /api/cron/lifecycle`
+  (nicht in der DB – dort sind Brevo- und Stripe-SDK verfügbar). Er erledigt:
+  1. Trial-Ablauf / Abo-Ende → Lesemodus (`access_until = now()+6 Monate`),
+  2. Erinnerungsmails an Lesemodus-Nutzer (höchstens alle 30 Tage),
+  3. endgültige Löschung nach Lesefrist + 7 Tagen Karenz (Storage, Daten,
+     `auth.users`, Stripe-Customer; Nachweis in `deletion_log`, nur user_id-Hash).
+- **Auslösung: Coolify-Scheduled-Task, täglich**, mit dem Secret-Header:
+  ```
+  curl -fsS -X POST -H "x-cron-secret: $CRON_SECRET" \
+       https://<domain>/api/cron/lifecycle
+  ```
+  `CRON_SECRET` als Env-Var setzen (siehe `.env.example`). Ohne gültiges Secret
+  antwortet die Route mit 401.
+- Zugriffsstufen zentral in `getAccessStatus` (packages/core): `active`,
+  `trial`, `readonly` (Lesemodus), `locked`. Schreibende Server-Actions werden
+  über `assertWriteAccess`/`requireWriteAccess` (`lib/access.ts`) serverseitig
+  abgelehnt, sobald der Status nicht `active`/`trial` ist.
+
 ## Preise / Stripe (verbindlich)
 - Anzeige-Preise werden ausschließlich aus dem `PLANS`-Objekt in
   `packages/core` gerendert – das ist die einzige Quelle.

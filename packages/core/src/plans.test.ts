@@ -6,6 +6,8 @@ import {
   unitLimitFor,
   nextPlanName,
   stripePriceEnvVar,
+  canWrite,
+  daysUntil,
 } from "./plans";
 
 const NOW = new Date("2026-07-16T12:00:00Z");
@@ -58,13 +60,86 @@ describe("getAccessStatus", () => {
     ).toBe("active");
   });
 
-  it("past_due nach mehr als 7 Tagen → locked", () => {
+  it("past_due nach mehr als 7 Tagen ohne Lesefrist → locked", () => {
     expect(
       getAccessStatus(
         { subscription_status: "past_due", trial_ends_at: null, current_period_end: inDays(-8) },
         NOW,
       ),
     ).toBe("locked");
+  });
+
+  it("gekündigt mit laufender Lesefrist → readonly", () => {
+    expect(
+      getAccessStatus(
+        {
+          subscription_status: "canceled",
+          trial_ends_at: null,
+          current_period_end: inDays(-10),
+          access_until: inDays(150),
+        },
+        NOW,
+      ),
+    ).toBe("readonly");
+  });
+
+  it("abgelaufener Trial mit laufender Lesefrist → readonly", () => {
+    expect(
+      getAccessStatus(
+        {
+          subscription_status: "trialing",
+          trial_ends_at: inDays(-1),
+          current_period_end: null,
+          access_until: inDays(180),
+        },
+        NOW,
+      ),
+    ).toBe("readonly");
+  });
+
+  it("abgelaufene Lesefrist → locked", () => {
+    expect(
+      getAccessStatus(
+        {
+          subscription_status: "canceled",
+          trial_ends_at: null,
+          current_period_end: null,
+          access_until: inDays(-1),
+        },
+        NOW,
+      ),
+    ).toBe("locked");
+  });
+
+  it("aktives Abo schlägt Lesefrist (bleibt active)", () => {
+    expect(
+      getAccessStatus(
+        {
+          subscription_status: "active",
+          trial_ends_at: null,
+          current_period_end: inDays(20),
+          access_until: inDays(-1),
+        },
+        NOW,
+      ),
+    ).toBe("active");
+  });
+});
+
+describe("canWrite", () => {
+  it("nur active und trial dürfen schreiben", () => {
+    expect(canWrite("active")).toBe(true);
+    expect(canWrite("trial")).toBe(true);
+    expect(canWrite("readonly")).toBe(false);
+    expect(canWrite("locked")).toBe(false);
+  });
+});
+
+describe("daysUntil", () => {
+  it("rundet auf, nie negativ", () => {
+    expect(daysUntil(inDays(3), NOW)).toBe(3);
+    expect(daysUntil(inDays(-5), NOW)).toBe(0);
+    expect(daysUntil(null, NOW)).toBe(0);
   });
 });
 
