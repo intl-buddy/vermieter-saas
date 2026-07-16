@@ -7,6 +7,14 @@ Supabase SSR, Tailwind v4 + shadcn/ui). Geteilte Logik/Typen: `packages/core`
 ## Befehle
 - `npm run build` – Build aller Pakete (muss vor jedem Commit grün sein).
 - `npm test` – Vitest der Rechenlogik in `packages/core` (muss grün sein).
+- `npm run test:e2e` – Playwright-Smoke-Tests gegen den lokalen Dev-Server
+  (benötigt `apps/web/.env.test` mit `E2E_EMAIL`/`E2E_PASSWORD` und einmalig
+  `npx playwright install chromium`).
+
+## Test- & Deploy-Regel (verbindlich)
+- **Vor jedem Push:** `npm run build`.
+- **Nach jedem Deploy mit Schema- oder Seitenänderungen:** `npm run test:e2e`
+  gegen die lokale Umgebung.
 
 ## Datenbank / Migrationen
 - Schema-Quelle ist `supabase/migrations/` (fortlaufend nummeriert). Der Code

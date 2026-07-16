@@ -29,6 +29,9 @@ ENV PORT=3000
 # Bind to all interfaces so the container is reachable from outside.
 ENV HOSTNAME=0.0.0.0
 
+# curl wird für den HEALTHCHECK benötigt.
+RUN apk add --no-cache curl
+
 # Run as an unprivileged user.
 RUN addgroup -g 1001 -S nodejs \
   && adduser -u 1001 -S nextjs -G nodejs
@@ -42,5 +45,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 USER nextjs
 
 EXPOSE 3000
+
+# Meldet den Container-Status an Coolify/Docker (behebt „unknown").
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD curl -fsS http://localhost:3000/api/health || exit 1
 
 CMD ["node", "apps/web/server.js"]
