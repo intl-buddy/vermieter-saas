@@ -17,10 +17,16 @@ export interface PlanConfig {
   name: string;
   /** Maximale Anzahl Einheiten. */
   unitLimit: number;
-  /** Bruttopreis pro Monat in EUR (Anzeige – muss zum Stripe-Produkt passen). */
+  /**
+   * Bruttopreis pro Monat in EUR bei monatlicher Zahlung.
+   * WICHTIG: Diese Werte sind die EINZIGE Anzeige-Quelle und müssen exakt zu
+   * den hinterlegten Stripe-Preisen passen (siehe CLAUDE.md).
+   */
   priceMonthly: number;
-  /** Bruttopreis pro Jahr in EUR (~20 % günstiger als 12× Monatspreis). */
-  priceYearly: number;
+  /** Effektiver Monatspreis in EUR bei jährlicher Zahlung. */
+  priceYearlyPerMonth: number;
+  /** Jährlich abgerechneter Gesamtbetrag in EUR. */
+  priceYearlyTotal: number;
   /** Name der Env-Var mit der monatlichen Stripe-Price-ID. */
   envMonthly: string;
   /** Name der Env-Var mit der jährlichen Stripe-Price-ID. */
@@ -32,8 +38,9 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     key: "bronze",
     name: "Bronze",
     unitLimit: 3,
-    priceMonthly: 7.9,
-    priceYearly: 75.9,
+    priceMonthly: 9.99,
+    priceYearlyPerMonth: 7.99,
+    priceYearlyTotal: 95.88,
     envMonthly: "STRIPE_PRICE_BRONZE_MONTHLY",
     envYearly: "STRIPE_PRICE_BRONZE_YEARLY",
   },
@@ -41,8 +48,9 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     key: "silber",
     name: "Silber",
     unitLimit: 5,
-    priceMonthly: 14.9,
-    priceYearly: 143,
+    priceMonthly: 15.99,
+    priceYearlyPerMonth: 12.99,
+    priceYearlyTotal: 155.88,
     envMonthly: "STRIPE_PRICE_SILBER_MONTHLY",
     envYearly: "STRIPE_PRICE_SILBER_YEARLY",
   },
@@ -50,8 +58,9 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     key: "gold",
     name: "Gold",
     unitLimit: 10,
-    priceMonthly: 29.9,
-    priceYearly: 287,
+    priceMonthly: 24.99,
+    priceYearlyPerMonth: 19.99,
+    priceYearlyTotal: 239.88,
     envMonthly: "STRIPE_PRICE_GOLD_MONTHLY",
     envYearly: "STRIPE_PRICE_GOLD_YEARLY",
   },
@@ -59,8 +68,9 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     key: "platin",
     name: "Platin",
     unitLimit: 20,
-    priceMonthly: 49.9,
-    priceYearly: 479,
+    priceMonthly: 39.99,
+    priceYearlyPerMonth: 32.99,
+    priceYearlyTotal: 395.88,
     envMonthly: "STRIPE_PRICE_PLATIN_MONTHLY",
     envYearly: "STRIPE_PRICE_PLATIN_YEARLY",
   },

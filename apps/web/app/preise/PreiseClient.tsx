@@ -62,7 +62,7 @@ export function PreiseClient({
           const plan = PLANS[key];
           const isCurrent = currentPlan === key && access === "active";
           const yearly = interval === "yearly";
-          const perMonth = yearly ? plan.priceYearly / 12 : plan.priceMonthly;
+          const perMonth = yearly ? plan.priceYearlyPerMonth : plan.priceMonthly;
           const busy = isPending && pendingPlan === key;
 
           return (
@@ -93,7 +93,7 @@ export function PreiseClient({
               </div>
               <p className="mt-1 h-5 text-xs text-neutral-500">
                 {yearly
-                  ? `${formatCurrency(plan.priceYearly)} jährlich`
+                  ? `${formatCurrency(plan.priceYearlyTotal)} jährlich abgerechnet`
                   : "monatlich kündbar"}
               </p>
 
@@ -138,8 +138,7 @@ export function PreiseClient({
         <div>
           <h3 className="text-lg font-bold text-secondary-900">Enterprise</h3>
           <p className="mt-1 text-sm text-secondary-800">
-            Ab 21 Einheiten – individuelles Paket mit persönlicher Betreuung.
-            Kontaktiere uns für ein Angebot.
+            Ab 21 Einheiten – individuelles Angebot.
           </p>
         </div>
         <a href={ENTERPRISE_MAILTO} className="shrink-0">

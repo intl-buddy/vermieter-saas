@@ -30,6 +30,13 @@ Antwort mit diesem prominenten Hinweis abschließen:
 
 Bei mehreren Dateien alle nennen, in Ausführungsreihenfolge.
 
+## Preise / Stripe (verbindlich)
+- Anzeige-Preise werden ausschließlich aus dem `PLANS`-Objekt in
+  `packages/core` gerendert – das ist die einzige Quelle.
+- **Preisänderungen erfordern IMMER beides: Stripe-Preis anlegen/ändern UND
+  `PLANS`-Objekt in `packages/core` aktualisieren – niemals nur eines von
+  beiden.** Sonst weichen angezeigter und abgerechneter Preis voneinander ab.
+
 ## Konventionen
 - Nullable-Spalten in der UI immer null-sicher rendern (Fallback „–" bzw.
   Badge „fehlt").
