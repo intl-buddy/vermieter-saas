@@ -1215,7 +1215,14 @@ export const Constants = {
       ],
       payer_type: ["tenant", "jobcenter", "other"],
       payment_source: ["manual", "csv_import"],
-      subscription_plan: ["trial", "bronze", "silber", "gold", "platin", "enterprise"],
+      subscription_plan: [
+        "trial",
+        "bronze",
+        "silber",
+        "gold",
+        "platin",
+        "enterprise",
+      ],
       subscription_status: [
         "trialing",
         "active",
