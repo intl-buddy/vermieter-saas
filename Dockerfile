@@ -47,6 +47,9 @@ USER nextjs
 EXPOSE 3000
 
 # Meldet den Container-Status an Coolify/Docker (behebt „unknown").
+# `curl -f` scheitert nur ab HTTP >= 400: Nur 503 (Supabase nicht erreichbar)
+# macht den Container unhealthy. „degraded" (Schema-Drift/fehlende Migration)
+# antwortet bewusst mit 200 und bleibt healthy – siehe CLAUDE.md.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD curl -fsS http://localhost:3000/api/health || exit 1
 

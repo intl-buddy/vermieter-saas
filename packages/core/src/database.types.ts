@@ -1002,6 +1002,13 @@ export type Database = {
       generate_monthly_charges: { Args: never; Returns: number }
       generate_tasks_from_templates: { Args: never; Returns: number }
       mark_overdue_tasks: { Args: never; Returns: number }
+      missing_schema_columns: {
+        Args: { expected: Json }
+        Returns: {
+          missing_column: string
+          missing_table: string
+        }[]
+      }
       open_charges: {
         Args: { p_tenant_id: string }
         Returns: {

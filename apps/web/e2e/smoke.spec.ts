@@ -47,6 +47,19 @@ test("/belege lädt", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("/preise zeigt die vier Tarif-Karten", async ({ page }) => {
+  await page.goto("/preise");
+  await expect(
+    page.getByRole("heading", { name: "Ein Paket für jede Portfoliogröße" }),
+  ).toBeVisible();
+  for (const plan of ["Bronze", "Silber", "Gold", "Platin"]) {
+    await expect(page.getByRole("heading", { name: plan })).toBeVisible();
+  }
+  // Abrechnungsintervall-Umschalter (Preise kommen aus PLANS, s. CLAUDE.md).
+  await expect(page.getByText("Monatlich", { exact: true })).toBeVisible();
+  await expect(page.getByText("Jährlich", { exact: true })).toBeVisible();
+});
+
 test("/vorlagen zeigt die drei Karten", async ({ page }) => {
   await page.goto("/vorlagen");
   await expect(page.getByText("Abmahnung", { exact: true })).toBeVisible();
