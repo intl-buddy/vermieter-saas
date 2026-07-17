@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, FileText, Home } from "lucide-react";
+import { AlertTriangle, FileText, Home, ClipboardCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
@@ -28,6 +28,13 @@ const TEMPLATES = [
     description:
       "Vollständiger Wohnraummietvertrag als Mustervorlage mit vorbefüllten Vertragsdaten.",
     icon: Home,
+  },
+  {
+    href: "/protokolle",
+    title: "Übergabeprotokoll",
+    description:
+      "Wohnungsübergabe bei Ein- und Auszug – Räume, Zählerstände, Schlüssel, Fotos und Unterschriften direkt am Handy.",
+    icon: ClipboardCheck,
   },
 ];
 

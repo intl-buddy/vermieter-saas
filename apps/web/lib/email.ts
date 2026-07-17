@@ -14,6 +14,8 @@ export interface SendEmailParams {
   html: string;
   replyTo?: string;
   attachments?: BrevoAttachment[];
+  /** Blindkopie-Empfänger (z. B. Kopie des Protokolls an den Vermieter). */
+  bcc?: string[];
 }
 
 export type SendEmailResult = { ok: true } | { ok: false; error: string };
@@ -41,6 +43,10 @@ export async function sendBrevoEmail(
       sender: { name: SENDER_NAME, email: SENDER_EMAIL },
       replyTo: params.replyTo ? { email: params.replyTo } : undefined,
       to: [{ email: params.to, name: params.toName || params.to }],
+      bcc:
+        params.bcc && params.bcc.length > 0
+          ? params.bcc.map((email) => ({ email }))
+          : undefined,
       subject: params.subject,
       htmlContent: params.html,
       attachment: params.attachments,

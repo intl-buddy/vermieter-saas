@@ -207,6 +207,48 @@ export const EXPECTED_COLUMNS: ExpectedColumn[] = [
     column: "onboarding_completed",
     since: "013_onboarding.sql",
   },
+
+  // --- 014: Wohnungsübergabeprotokoll -------------------------------------
+  {
+    table: "handover_protocols",
+    column: "unit_id",
+    since: "014_handover_protocols.sql",
+  },
+  {
+    table: "handover_protocols",
+    column: "type",
+    since: "014_handover_protocols.sql",
+  },
+  {
+    table: "handover_protocols",
+    column: "status",
+    since: "014_handover_protocols.sql",
+  },
+  {
+    table: "handover_protocols",
+    column: "rooms",
+    since: "014_handover_protocols.sql",
+  },
+  {
+    table: "handover_protocols",
+    column: "meter_readings",
+    since: "014_handover_protocols.sql",
+  },
+  {
+    table: "handover_protocols",
+    column: "keys",
+    since: "014_handover_protocols.sql",
+  },
+  {
+    table: "handover_protocols",
+    column: "signature_landlord",
+    since: "014_handover_protocols.sql",
+  },
+  {
+    table: "handover_protocols",
+    column: "pdf_url",
+    since: "014_handover_protocols.sql",
+  },
 ];
 
 /** Kompaktes `tabelle.spalte`-Kürzel – Format der `missing`-Liste in /api/health. */

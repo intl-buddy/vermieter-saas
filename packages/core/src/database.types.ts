@@ -331,6 +331,88 @@ export type Database = {
           },
         ]
       }
+      handover_protocols: {
+        Row: {
+          created_at: string
+          id: string
+          keys: Json
+          meter_readings: Json
+          notes: string | null
+          pdf_url: string | null
+          protocol_date: string
+          rooms: Json
+          signature_landlord: string | null
+          signature_tenant: string | null
+          status: Database["public"]["Enums"]["handover_status"]
+          tenant_email: string | null
+          tenant_id: string | null
+          tenant_name: string
+          type: Database["public"]["Enums"]["handover_type"]
+          unit_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          keys?: Json
+          meter_readings?: Json
+          notes?: string | null
+          pdf_url?: string | null
+          protocol_date?: string
+          rooms?: Json
+          signature_landlord?: string | null
+          signature_tenant?: string | null
+          status?: Database["public"]["Enums"]["handover_status"]
+          tenant_email?: string | null
+          tenant_id?: string | null
+          tenant_name?: string
+          type: Database["public"]["Enums"]["handover_type"]
+          unit_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          keys?: Json
+          meter_readings?: Json
+          notes?: string | null
+          pdf_url?: string | null
+          protocol_date?: string
+          rooms?: Json
+          signature_landlord?: string | null
+          signature_tenant?: string | null
+          status?: Database["public"]["Enums"]["handover_status"]
+          tenant_email?: string | null
+          tenant_id?: string | null
+          tenant_name?: string
+          type?: Database["public"]["Enums"]["handover_type"]
+          unit_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handover_protocols_tenant_id_fkey"
+            columns: ["tenant_id"]
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handover_protocols_unit_id_fkey"
+            columns: ["unit_id"]
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handover_protocols_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operating_costs_records: {
         Row: {
           allocation_key: Database["public"]["Enums"]["allocation_key"]
@@ -1041,6 +1123,8 @@ export type Database = {
         | "pledged_savings"
         | "none"
       dunning_status: "draft" | "sent" | "resolved" | "obsolete"
+      handover_status: "draft" | "completed"
+      handover_type: "move_in" | "move_out"
       operating_cost_type:
         | "property_tax"
         | "water_supply"
@@ -1230,6 +1314,8 @@ export const Constants = {
         "none",
       ],
       dunning_status: ["draft", "sent", "resolved", "obsolete"],
+      handover_status: ["draft", "completed"],
+      handover_type: ["move_in", "move_out"],
       operating_cost_type: [
         "property_tax",
         "water_supply",

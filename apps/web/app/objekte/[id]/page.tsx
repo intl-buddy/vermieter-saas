@@ -12,6 +12,7 @@ import { PropertyForm } from "../PropertyForm";
 import { UnitForm } from "./UnitForm";
 import { TenantForm } from "./TenantForm";
 import { TenantActions } from "./TenantActions";
+import { UnitProtocolSection, type UnitProtocol } from "./UnitProtocolSection";
 import type { TenantValues } from "./TenantEditDialog";
 
 type UnitType = Database["public"]["Enums"]["unit_type"];
@@ -147,6 +148,28 @@ export default async function ObjektDetailPage({
         });
         endedByUnit.set(t.unit_id, list);
       }
+    }
+  }
+
+  // Übergabeprotokolle je Einheit (bleiben an der Einheit – auch nach
+  // Mieterwechsel sichtbar).
+  const protocolsByUnit = new Map<string, UnitProtocol[]>();
+  if (unitIds.length > 0) {
+    const { data: protocols } = await supabase
+      .from("handover_protocols")
+      .select("id, unit_id, tenant_name, type, protocol_date, status")
+      .in("unit_id", unitIds)
+      .order("protocol_date", { ascending: false });
+    for (const p of protocols ?? []) {
+      const list = protocolsByUnit.get(p.unit_id) ?? [];
+      list.push({
+        id: p.id,
+        tenant_name: p.tenant_name,
+        type: p.type,
+        protocol_date: p.protocol_date,
+        status: p.status,
+      });
+      protocolsByUnit.set(p.unit_id, list);
     }
   }
 
@@ -346,6 +369,12 @@ export default async function ObjektDetailPage({
                         />
                       </div>
                     </details>
+
+                    <UnitProtocolSection
+                      unitId={unit.id}
+                      activeTenantId={tenant?.id ?? null}
+                      protocols={protocolsByUnit.get(unit.id) ?? []}
+                    />
                   </CardContent>
                 </Card>
               );

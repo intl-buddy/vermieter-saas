@@ -15,6 +15,7 @@ const PROTECTED_PREFIXES = [
   "/aufgaben",
   "/belege",
   "/abrechnung",
+  "/protokolle",
   "/einstellungen",
   "/mahnungen",
 ];
