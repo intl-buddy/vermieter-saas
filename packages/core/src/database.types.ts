@@ -984,6 +984,7 @@ export type Database = {
           full_name: string
           iban: string | null
           id: string
+          is_admin: boolean
           onboarding_completed: boolean
           phone: string | null
           plan: Database["public"]["Enums"]["subscription_plan"]
@@ -1013,6 +1014,7 @@ export type Database = {
           full_name: string
           iban?: string | null
           id?: string
+          is_admin?: boolean
           onboarding_completed?: boolean
           phone?: string | null
           plan?: Database["public"]["Enums"]["subscription_plan"]
@@ -1042,6 +1044,7 @@ export type Database = {
           full_name?: string
           iban?: string | null
           id?: string
+          is_admin?: boolean
           onboarding_completed?: boolean
           phone?: string | null
           plan?: Database["public"]["Enums"]["subscription_plan"]
@@ -1084,6 +1087,9 @@ export type Database = {
       }
     }
     Functions: {
+      admin_stats: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_stats_by_city: { Args: Record<PropertyKey, never>; Returns: Json }
+      is_admin_caller: { Args: Record<PropertyKey, never>; Returns: boolean }
       generate_monthly_charges: { Args: never; Returns: number }
       generate_tasks_from_templates: { Args: never; Returns: number }
       mark_overdue_tasks: { Args: never; Returns: number }

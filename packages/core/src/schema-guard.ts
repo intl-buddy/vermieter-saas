@@ -249,6 +249,13 @@ export const EXPECTED_COLUMNS: ExpectedColumn[] = [
     column: "pdf_url",
     since: "014_handover_protocols.sql",
   },
+
+  // --- 015: Admin-Dashboard -----------------------------------------------
+  {
+    table: "users",
+    column: "is_admin",
+    since: "015_admin_dashboard.sql",
+  },
 ];
 
 /** Kompaktes `tabelle.spalte`-Kürzel – Format der `missing`-Liste in /api/health. */

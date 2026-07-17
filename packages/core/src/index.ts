@@ -5,3 +5,4 @@ export * from "./plans";
 export * from "./schema-guard";
 export * from "./site-url";
 export * from "./onboarding";
+export * from "./admin";
