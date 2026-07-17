@@ -190,6 +190,140 @@ export function computeRevenue(
   };
 }
 
+// ---- Analytics: Funnel, Feature-Nutzung, Verlauf, Portfolio ---------------
+
+/** Anteil in Prozent (auf 1 Stelle), 0 bei fehlender Grundgesamtheit. */
+export function percentage(part: number, total: number): number {
+  if (!(total > 0)) return 0;
+  return Math.round((part / total) * 1000) / 10;
+}
+
+export type PortfolioBucket = "0" | "1-3" | "4-5" | "6-10" | "11-20" | "21+";
+
+/** Ordnet eine Einheitenzahl dem Portfolio-Bucket zu (Paketgrenzen). */
+export function portfolioBucket(units: number): PortfolioBucket {
+  if (units <= 0) return "0";
+  if (units <= 3) return "1-3";
+  if (units <= 5) return "4-5";
+  if (units <= 10) return "6-10";
+  if (units <= 20) return "11-20";
+  return "21+";
+}
+
+/** Reihenfolge + Paket-Hinweis je Bucket (für die Achse). */
+export const PORTFOLIO_BUCKETS: { bucket: PortfolioBucket; plan: string }[] = [
+  { bucket: "0", plan: "kein Objekt" },
+  { bucket: "1-3", plan: "Bronze" },
+  { bucket: "4-5", plan: "Silber" },
+  { bucket: "6-10", plan: "Gold" },
+  { bucket: "11-20", plan: "Platin" },
+  { bucket: "21+", plan: "Enterprise" },
+];
+
+export interface WeeklyRegistration {
+  weekStart: string;
+  count: number;
+}
+
+export interface FunnelStats {
+  usersTotal: number;
+  usersWithObject: number;
+  usersWithActiveTenancy: number;
+  onboardingCompleted: number;
+  usersWithSub: number;
+  avgTrialToPaidDays: number | null;
+  registrationsWeekly: WeeklyRegistration[];
+}
+
+export interface FeatureCount {
+  total: number;
+  last30: number;
+}
+
+export interface FeatureUsage {
+  dunnings: FeatureCount;
+  billingRuns: FeatureCount;
+  protocols: FeatureCount;
+  receipts: FeatureCount;
+  tasks: FeatureCount;
+}
+
+export interface MetricsPoint {
+  snapshotDate: string;
+  mrrGross: number;
+  usersTotal: number;
+  usersActiveSub: number;
+}
+
+export interface PortfolioRow {
+  bucket: string;
+  count: number;
+}
+
+export function parseFunnelStats(value: unknown): FunnelStats {
+  const o = (value ?? {}) as Record<string, unknown>;
+  const avg = o.avg_trial_to_paid_days;
+  const weekly = Array.isArray(o.registrations_weekly)
+    ? o.registrations_weekly
+    : [];
+  return {
+    usersTotal: num(o.users_total),
+    usersWithObject: num(o.users_with_object),
+    usersWithActiveTenancy: num(o.users_with_active_tenancy),
+    onboardingCompleted: num(o.onboarding_completed),
+    usersWithSub: num(o.users_with_sub),
+    avgTrialToPaidDays:
+      avg === null || avg === undefined || avg === "" ? null : num(avg),
+    registrationsWeekly: weekly.map((w) => {
+      const wo = (w ?? {}) as Record<string, unknown>;
+      return {
+        weekStart: typeof wo.week_start === "string" ? wo.week_start : "",
+        count: num(wo.count),
+      };
+    }),
+  };
+}
+
+function featureCount(value: unknown): FeatureCount {
+  const o = (value ?? {}) as Record<string, unknown>;
+  return { total: num(o.total), last30: num(o.last_30) };
+}
+
+export function parseFeatureUsage(value: unknown): FeatureUsage {
+  const o = (value ?? {}) as Record<string, unknown>;
+  return {
+    dunnings: featureCount(o.dunnings),
+    billingRuns: featureCount(o.billing_runs),
+    protocols: featureCount(o.protocols),
+    receipts: featureCount(o.receipts),
+    tasks: featureCount(o.tasks),
+  };
+}
+
+export function parseMetricsHistory(value: unknown): MetricsPoint[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((row) => {
+    const o = (row ?? {}) as Record<string, unknown>;
+    return {
+      snapshotDate: typeof o.snapshot_date === "string" ? o.snapshot_date : "",
+      mrrGross: num(o.mrr_gross),
+      usersTotal: num(o.users_total),
+      usersActiveSub: num(o.users_active_sub),
+    };
+  });
+}
+
+export function parsePortfolio(value: unknown): PortfolioRow[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((row) => {
+    const o = (row ?? {}) as Record<string, unknown>;
+    return {
+      bucket: typeof o.bucket === "string" ? o.bucket : "",
+      count: num(o.count),
+    };
+  });
+}
+
 /** Parst die JSON-Rohdaten von admin_revenue_stats() defensiv. */
 export function parseRevenueRows(value: unknown): RevenueSubRow[] {
   if (!Array.isArray(value)) return [];

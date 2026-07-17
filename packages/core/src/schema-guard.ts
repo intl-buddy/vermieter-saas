@@ -256,6 +256,40 @@ export const EXPECTED_COLUMNS: ExpectedColumn[] = [
     column: "is_admin",
     since: "015_admin_dashboard.sql",
   },
+
+  // --- 016: Umsatz (nur Funktion, keine Spalten) --------------------------
+
+  // --- 017: Admin-Analytics -----------------------------------------------
+  {
+    table: "admin_metrics_snapshots",
+    column: "snapshot_date",
+    since: "017_admin_analytics.sql",
+  },
+  {
+    table: "admin_metrics_snapshots",
+    column: "mrr_gross",
+    since: "017_admin_analytics.sql",
+  },
+  {
+    table: "admin_metrics_snapshots",
+    column: "users_total",
+    since: "017_admin_analytics.sql",
+  },
+  {
+    table: "admin_metrics_snapshots",
+    column: "protocols_total",
+    since: "017_admin_analytics.sql",
+  },
+  {
+    table: "admin_price_catalog",
+    column: "price_id",
+    since: "017_admin_analytics.sql",
+  },
+  {
+    table: "admin_price_catalog",
+    column: "monthly_gross",
+    since: "017_admin_analytics.sql",
+  },
 ];
 
 /** Kompaktes `tabelle.spalte`-Kürzel – Format der `missing`-Liste in /api/health. */

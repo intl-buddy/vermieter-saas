@@ -1087,9 +1087,21 @@ export type Database = {
       }
     }
     Functions: {
+      admin_feature_usage: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_funnel_stats: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_metrics_history: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_portfolio_distribution: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       admin_revenue_stats: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_stats: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_stats_by_city: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_sync_price_catalog: { Args: { p_entries: Json }; Returns: undefined }
+      capture_admin_snapshot: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       is_admin_caller: { Args: Record<PropertyKey, never>; Returns: boolean }
       generate_monthly_charges: { Args: never; Returns: number }
       generate_tasks_from_templates: { Args: never; Returns: number }

@@ -6,6 +6,12 @@ import {
   parseCityStats,
   computeRevenue,
   parseRevenueRows,
+  percentage,
+  portfolioBucket,
+  parseFunnelStats,
+  parseFeatureUsage,
+  parseMetricsHistory,
+  parsePortfolio,
   type PriceMap,
 } from "./admin";
 
@@ -196,3 +202,85 @@ describe("parseRevenueRows", () => {
 function round(x: number): number {
   return Math.round(x * 100) / 100;
 }
+
+describe("percentage", () => {
+  it("berechnet den Anteil auf eine Nachkommastelle", () => {
+    expect(percentage(1, 3)).toBe(33.3);
+    expect(percentage(1, 2)).toBe(50);
+    expect(percentage(3, 3)).toBe(100);
+  });
+  it("gibt 0 bei leerer Grundgesamtheit zurück (keine Division durch 0)", () => {
+    expect(percentage(0, 0)).toBe(0);
+    expect(percentage(5, 0)).toBe(0);
+  });
+});
+
+describe("portfolioBucket", () => {
+  it("ordnet an den Paketgrenzen korrekt zu", () => {
+    expect(portfolioBucket(0)).toBe("0");
+    expect(portfolioBucket(1)).toBe("1-3");
+    expect(portfolioBucket(3)).toBe("1-3");
+    expect(portfolioBucket(4)).toBe("4-5");
+    expect(portfolioBucket(5)).toBe("4-5");
+    expect(portfolioBucket(6)).toBe("6-10");
+    expect(portfolioBucket(10)).toBe("6-10");
+    expect(portfolioBucket(11)).toBe("11-20");
+    expect(portfolioBucket(20)).toBe("11-20");
+    expect(portfolioBucket(21)).toBe("21+");
+    expect(portfolioBucket(99)).toBe("21+");
+  });
+});
+
+describe("parseFunnelStats", () => {
+  it("liest Kennzahlen und Wochen-Registrierungen", () => {
+    const f = parseFunnelStats({
+      users_total: 100,
+      users_with_object: 60,
+      users_with_active_tenancy: 40,
+      onboarding_completed: 55,
+      users_with_sub: 25,
+      avg_trial_to_paid_days: "9",
+      registrations_weekly: [
+        { week_start: "2026-05-04", count: 3 },
+        { week_start: "2026-05-11", count: "5" },
+      ],
+    });
+    expect(f.usersWithObject).toBe(60);
+    expect(f.avgTrialToPaidDays).toBe(9);
+    expect(f.registrationsWeekly).toHaveLength(2);
+    expect(f.registrationsWeekly[1]!.count).toBe(5);
+    expect(percentage(f.usersWithObject, f.usersTotal)).toBe(60);
+  });
+  it("verträgt fehlendes avg (null)", () => {
+    expect(parseFunnelStats({ avg_trial_to_paid_days: null }).avgTrialToPaidDays).toBeNull();
+  });
+});
+
+describe("parseFeatureUsage / parseMetricsHistory / parsePortfolio", () => {
+  it("liest Feature-Zähler mit total + last_30", () => {
+    const u = parseFeatureUsage({
+      dunnings: { total: 12, last_30: 3 },
+      billing_runs: { total: 5, last_30: 1 },
+    });
+    expect(u.dunnings).toEqual({ total: 12, last30: 3 });
+    expect(u.protocols).toEqual({ total: 0, last30: 0 });
+  });
+  it("liest den MRR-Verlauf", () => {
+    const h = parseMetricsHistory([
+      { snapshot_date: "2026-07-17", mrr_gross: "199.90", users_total: 42, users_active_sub: 10 },
+    ]);
+    expect(h[0]!.mrrGross).toBe(199.9);
+    expect(h[0]!.snapshotDate).toBe("2026-07-17");
+  });
+  it("liest die Portfolio-Verteilung", () => {
+    const p = parsePortfolio([
+      { bucket: "0", count: 4 },
+      { bucket: "1-3", count: 9 },
+    ]);
+    expect(p).toEqual([
+      { bucket: "0", count: 4 },
+      { bucket: "1-3", count: 9 },
+    ]);
+    expect(parsePortfolio(null)).toEqual([]);
+  });
+});
