@@ -35,9 +35,12 @@ function SubmitButton({ label }: { label: string }) {
 export function PropertyForm({
   mode,
   property,
+  onSuccess,
 }: {
   mode: "create" | "edit";
   property?: PropertyValues;
+  /** Optionaler Callback nach erfolgreichem Speichern (z. B. Onboarding). */
+  onSuccess?: () => void;
 }) {
   const action = mode === "create" ? createProperty : updateProperty;
   const [state, formAction] = useActionState(action, initialState);
@@ -48,8 +51,9 @@ export function PropertyForm({
     if (state.success) {
       toast.success(state.success);
       if (mode === "create") formRef.current?.reset();
+      onSuccess?.();
     }
-  }, [state, mode]);
+  }, [state, mode, onSuccess]);
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">

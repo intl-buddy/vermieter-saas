@@ -58,10 +58,13 @@ export function UnitForm({
   mode,
   propertyId,
   unit,
+  onSuccess,
 }: {
   mode: "create" | "edit";
   propertyId: string;
   unit?: UnitValues;
+  /** Optionaler Callback nach erfolgreichem Speichern (z. B. Onboarding). */
+  onSuccess?: () => void;
 }) {
   const action = mode === "create" ? createUnit : updateUnit;
   const [state, formAction] = useActionState(action, initialState);
@@ -79,8 +82,9 @@ export function UnitForm({
     if (state.success) {
       toast.success(state.success);
       if (mode === "create") formRef.current?.reset();
+      onSuccess?.();
     }
-  }, [state, mode]);
+  }, [state, mode, onSuccess]);
 
   return (
     <>

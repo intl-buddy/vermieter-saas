@@ -198,6 +198,15 @@ export const EXPECTED_COLUMNS: ExpectedColumn[] = [
   },
 
   // --- 011: keine neuen Spalten (nur Defaults/Trigger/Backfill) -----------
+
+  // --- 012: keine neuen Spalten (nur Schema-Wächter-RPC) ------------------
+
+  // --- 013: Onboarding ----------------------------------------------------
+  {
+    table: "users",
+    column: "onboarding_completed",
+    since: "013_onboarding.sql",
+  },
 ];
 
 /** Kompaktes `tabelle.spalte`-Kürzel – Format der `missing`-Liste in /api/health. */

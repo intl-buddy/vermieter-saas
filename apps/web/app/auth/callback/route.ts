@@ -10,7 +10,8 @@ import { siteUrlFromHeaders } from "../../../lib/site-url";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+  const nextParam = searchParams.get("next");
+  const next = nextParam ?? "/dashboard";
 
   // Ziel-Origin aus SITE_URL bzw. den Proxy-Headern, NICHT aus request.url:
   // Letzteres ist im Container die interne Adresse (0.0.0.0:3000) und landete
@@ -30,10 +31,20 @@ export async function GET(request: NextRequest) {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      let dest = target;
       if (user) {
         await ensureUserRecord(supabase, user);
+        // Ohne explizites `next` neue Nutzer ins Onboarding führen.
+        if (!nextParam) {
+          const { data: profile } = await supabase
+            .from("users")
+            .select("onboarding_completed")
+            .eq("id", user.id)
+            .maybeSingle();
+          if (!profile?.onboarding_completed) dest = "/willkommen";
+        }
       }
-      return NextResponse.redirect(`${base}${target}`);
+      return NextResponse.redirect(`${base}${dest}`);
     }
   }
 

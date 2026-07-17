@@ -37,9 +37,12 @@ function SubmitButton() {
 export function TenantForm({
   unitId,
   propertyId,
+  onSuccess,
 }: {
   unitId: string;
   propertyId: string;
+  /** Optionaler Callback nach erfolgreichem Speichern (z. B. Onboarding). */
+  onSuccess?: () => void;
 }) {
   const [state, formAction] = useActionState(createTenant, initialState);
   const formRef = useRef<HTMLFormElement>(null);
@@ -50,8 +53,9 @@ export function TenantForm({
     if (state.success) {
       toast.success(state.success);
       formRef.current?.reset();
+      onSuccess?.();
     }
-  }, [state]);
+  }, [state, onSuccess]);
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">

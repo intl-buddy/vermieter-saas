@@ -64,13 +64,35 @@ export async function login(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
   if (error) {
     return { error: translateAuthError(error.message) };
   }
 
-  redirect("/dashboard");
+  redirect(await postLoginDestination(supabase, data.user?.id));
+}
+
+/**
+ * Zielseite nach erfolgreichem Login: neue Nutzer, die das Onboarding noch
+ * nicht abgeschlossen haben, werden nach /willkommen geführt (nur direkt nach
+ * dem Login – nicht bei jedem Request, damit „Später einrichten" funktioniert).
+ */
+async function postLoginDestination(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string | undefined,
+): Promise<string> {
+  if (!userId) return "/dashboard";
+  const { data: profile } = await supabase
+    .from("users")
+    .select("onboarding_completed")
+    .eq("id", userId)
+    .maybeSingle();
+  // Fehlt die Zeile noch, ist der Nutzer brandneu → Onboarding.
+  return profile?.onboarding_completed ? "/dashboard" : "/willkommen";
 }
 
 /**
@@ -114,7 +136,7 @@ export async function register(
   }
 
   // Session vorhanden (E-Mail-Bestätigung deaktiviert) → direkt einloggen und
-  // public.users-Eintrag anlegen.
+  // public.users-Eintrag anlegen. Neu registriert → immer ins Onboarding.
   if (data.session && data.user) {
     const insertError = await ensureUserRecord(supabase, data.user);
     if (insertError) {
@@ -123,7 +145,7 @@ export async function register(
           "Konto erstellt, aber das Profil konnte nicht angelegt werden. Bitte melde dich an.",
       };
     }
-    redirect("/dashboard");
+    redirect("/willkommen");
   }
 
   // Keine Session → E-Mail-Bestätigung erforderlich. Der public.users-Eintrag

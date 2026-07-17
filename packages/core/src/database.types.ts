@@ -902,6 +902,7 @@ export type Database = {
           full_name: string
           iban: string | null
           id: string
+          onboarding_completed: boolean
           phone: string | null
           plan: Database["public"]["Enums"]["subscription_plan"]
           price_id: string | null
@@ -930,6 +931,7 @@ export type Database = {
           full_name: string
           iban?: string | null
           id?: string
+          onboarding_completed?: boolean
           phone?: string | null
           plan?: Database["public"]["Enums"]["subscription_plan"]
           price_id?: string | null
@@ -958,6 +960,7 @@ export type Database = {
           full_name?: string
           iban?: string | null
           id?: string
+          onboarding_completed?: boolean
           phone?: string | null
           plan?: Database["public"]["Enums"]["subscription_plan"]
           price_id?: string | null

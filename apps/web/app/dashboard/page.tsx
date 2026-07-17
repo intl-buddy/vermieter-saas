@@ -80,7 +80,11 @@ export default async function DashboardPage({
     { data: propertyList },
     { data: unitList },
   ] = await Promise.all([
-    supabase.from("users").select("full_name").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("users")
+      .select("full_name, onboarding_completed")
+      .eq("id", user.id)
+      .maybeSingle(),
     supabase.from("properties").select("id", { count: "exact", head: true }),
     supabase.from("tenant_balances").select("balance"),
     supabase
@@ -169,6 +173,26 @@ export default async function DashboardPage({
           Hier siehst du deine wichtigsten Kennzahlen auf einen Blick.
         </p>
       </div>
+
+      {profile && profile.onboarding_completed === false ? (
+        <Link
+          href="/willkommen"
+          className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gold-300 bg-gold-50 px-5 py-4 transition-colors hover:bg-gold-100"
+        >
+          <div>
+            <div className="font-semibold text-foreground">
+              Einrichtung fortsetzen
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Schließe die geführte Einrichtung ab – Absenderdaten, erstes Objekt,
+              Einheit und Mietverhältnis.
+            </div>
+          </div>
+          <span className="shrink-0 text-sm font-semibold text-secondary">
+            Weiter →
+          </span>
+        </Link>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {kpis.map((kpi) => {

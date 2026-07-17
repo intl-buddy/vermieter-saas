@@ -9,6 +9,7 @@ import { getAccessStatus } from "@repo/core";
  */
 const PROTECTED_PREFIXES = [
   "/dashboard",
+  "/willkommen",
   "/objekte",
   "/mieteingang",
   "/aufgaben",
