@@ -33,7 +33,7 @@ setup("authenticate", async ({ page }) => {
         (meldung ? `Seite meldet: „${meldung}". ` : "") +
         "Häufigste Ursache: Der Testnutzer existiert nicht oder seine " +
         "E-Mail-Adresse ist in Supabase nicht bestätigt " +
-        "(Dashboard → Authentication → Users → „Confirm email").",
+        "(Dashboard → Authentication → Users → „Confirm email\").",
     );
   }
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
