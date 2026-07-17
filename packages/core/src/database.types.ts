@@ -1087,6 +1087,7 @@ export type Database = {
       }
     }
     Functions: {
+      admin_revenue_stats: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_stats: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_stats_by_city: { Args: Record<PropertyKey, never>; Returns: Json }
       is_admin_caller: { Args: Record<PropertyKey, never>; Returns: boolean }

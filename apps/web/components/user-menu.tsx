@@ -66,7 +66,7 @@ export function UserMenu({
         </DropdownMenuItem>
         {isAdmin ? (
           <DropdownMenuItem asChild>
-            <Link href="/admin">
+            <Link href="/novipazar">
               <Shield className="size-4" />
               Admin
             </Link>

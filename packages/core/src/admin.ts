@@ -78,6 +78,131 @@ export function parseAdminStats(value: unknown): AdminStats {
   };
 }
 
+// ---- Umsatz-Kennzahlen (MRR/ARR) ------------------------------------------
+
+/** USt-Divisor (19 %) für die Netto-Umrechnung. */
+export const VAT_DIVISOR = 1.19;
+
+/** Roh-Zählung je price_id aus admin_revenue_stats(). */
+export interface RevenueSubRow {
+  priceId: string | null;
+  subs: number;
+  canceling: number;
+}
+
+/**
+ * Preisinfo je Stripe-price_id, aus PLANS + Env aufgebaut. `grossPrice` ist der
+ * abgerechnete Bruttobetrag für das Intervall (Monatspreis bzw. Jahres-Gesamt);
+ * die Umrechnung auf den Monatsbeitrag (Jahr /12) macht computeRevenue.
+ */
+export interface PlanPrice {
+  planKey: string;
+  planName: string;
+  interval: "monthly" | "yearly";
+  grossPrice: number;
+}
+
+export type PriceMap = Record<string, PlanPrice>;
+
+export interface PlanRevenue {
+  planKey: string;
+  planName: string;
+  /** Anzahl monatlich abgerechneter Abos. */
+  monthly: number;
+  /** Anzahl jährlich abgerechneter Abos. */
+  yearly: number;
+  /** MRR-Anteil dieses Plans (brutto). */
+  mrr: number;
+}
+
+export interface RevenueStats {
+  mrrGross: number;
+  mrrNet: number;
+  arrGross: number;
+  /** Anzahl aktiver Abos mit cancel_at_period_end = true (auslaufend). */
+  churn: number;
+  byPlan: PlanRevenue[];
+  /** Aktive Abos, deren price_id sich nicht auf einen Plan abbilden ließ. */
+  unmapped: number;
+}
+
+function round2(x: number): number {
+  return Math.round(x * 100) / 100;
+}
+
+/** Monatsbeitrag (brutto) einer Preisinfo – Jahresabos werden durch 12 geteilt. */
+export function monthlyGrossOf(price: PlanPrice): number {
+  return price.interval === "yearly" ? price.grossPrice / 12 : price.grossPrice;
+}
+
+/**
+ * Berechnet MRR/ARR und die Aufschlüsselung je Plan aus den Roh-Zählungen und
+ * dem Preis-Mapping. Gekündigte-aber-laufende Abos sind in `subs` enthalten und
+ * zählen voll zum MRR; ihre Anzahl steht zusätzlich in `churn`.
+ */
+export function computeRevenue(
+  rows: RevenueSubRow[],
+  priceMap: PriceMap,
+): RevenueStats {
+  const byPlan = new Map<string, PlanRevenue>();
+  let mrrGross = 0;
+  let churn = 0;
+  let unmapped = 0;
+
+  for (const row of rows) {
+    churn += row.canceling;
+    const price = row.priceId ? priceMap[row.priceId] : undefined;
+    if (!price) {
+      unmapped += row.subs;
+      continue;
+    }
+    const monthly = monthlyGrossOf(price);
+    const contribution = monthly * row.subs;
+    mrrGross += contribution;
+
+    const entry =
+      byPlan.get(price.planKey) ??
+      ({
+        planKey: price.planKey,
+        planName: price.planName,
+        monthly: 0,
+        yearly: 0,
+        mrr: 0,
+      } satisfies PlanRevenue);
+    if (price.interval === "yearly") entry.yearly += row.subs;
+    else entry.monthly += row.subs;
+    entry.mrr += contribution;
+    byPlan.set(price.planKey, entry);
+  }
+
+  mrrGross = round2(mrrGross);
+  const plans = [...byPlan.values()]
+    .map((p) => ({ ...p, mrr: round2(p.mrr) }))
+    .sort((a, b) => b.mrr - a.mrr);
+
+  return {
+    mrrGross,
+    mrrNet: round2(mrrGross / VAT_DIVISOR),
+    arrGross: round2(mrrGross * 12),
+    churn,
+    byPlan: plans,
+    unmapped,
+  };
+}
+
+/** Parst die JSON-Rohdaten von admin_revenue_stats() defensiv. */
+export function parseRevenueRows(value: unknown): RevenueSubRow[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((row) => {
+    const o = (row ?? {}) as Record<string, unknown>;
+    return {
+      priceId: typeof o.price_id === "string" ? o.price_id : null,
+      subs: num(o.subs),
+      canceling: num(o.canceling),
+    };
+  });
+}
+
 export function parseCityStats(value: unknown): CityStats[] {
   if (!Array.isArray(value)) return [];
   return value.map((row) => {
