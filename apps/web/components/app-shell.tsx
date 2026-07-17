@@ -24,7 +24,10 @@ export async function AppShell({
   userEmail: string;
   children: React.ReactNode;
 }) {
-  const access = await getAccessSummary();
+  const [access, isAdmin] = await Promise.all([
+    getAccessSummary(),
+    getIsAdmin(),
+  ]);
 
   return (
     <div className="min-h-dvh">
@@ -46,7 +49,7 @@ export async function AppShell({
             </>
           ) : null}
           <div className="ml-auto">
-            <UserMenu email={userEmail} />
+            <UserMenu email={userEmail} isAdmin={isAdmin} />
           </div>
         </div>
       </header>
@@ -138,5 +141,29 @@ async function getAccessSummary(): Promise<AccessSummary | null> {
     };
   } catch {
     return null;
+  }
+}
+
+/**
+ * Ist der eingeloggte Nutzer Admin? Bewusst eine EIGENE Abfrage (nur die
+ * is_admin-Spalte), damit ein fehlendes/verändertes Feld niemals die
+ * Zugriffs-Banner mitreißt. Fehler → false (der Eintrag erscheint dann nicht).
+ */
+async function getIsAdmin(): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { data } = await supabase
+      .from("users")
+      .select("is_admin")
+      .eq("id", user.id)
+      .maybeSingle();
+    return data?.is_admin === true;
+  } catch {
+    return false;
   }
 }

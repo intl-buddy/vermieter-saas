@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { User, ChevronDown, LogOut, Settings, Receipt, Calculator, FileText } from "lucide-react";
+import {
+  User,
+  ChevronDown,
+  LogOut,
+  Settings,
+  Receipt,
+  Calculator,
+  FileText,
+  Shield,
+} from "lucide-react";
 import { logout } from "@/app/actions";
 import {
   DropdownMenu,
@@ -12,7 +21,15 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
-export function UserMenu({ email }: { email: string }) {
+export function UserMenu({
+  email,
+  isAdmin = false,
+}: {
+  email: string;
+  /** Serverseitig ermittelt – der Admin-Eintrag wird für Nicht-Admins gar
+   *  nicht gerendert (nicht bloß per CSS versteckt). */
+  isAdmin?: boolean;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white py-1.5 pl-1.5 pr-2.5 text-sm text-neutral-700 transition-colors hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -47,6 +64,14 @@ export function UserMenu({ email }: { email: string }) {
             Abrechnungen
           </Link>
         </DropdownMenuItem>
+        {isAdmin ? (
+          <DropdownMenuItem asChild>
+            <Link href="/admin">
+              <Shield className="size-4" />
+              Admin
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem asChild>
           <Link href="/einstellungen">
             <Settings className="size-4" />
