@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "../lib/supabase/server";
 import { ensureUserRecord, translateAuthError } from "../lib/auth";
+import { siteUrlFromHeaders } from "../lib/site-url";
 
 export type AuthState = {
   error?: string;
@@ -11,9 +12,6 @@ export type AuthState = {
 };
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** Zieladresse des Passwort-Zurücksetzen-Links (Produktions-URL). */
-const PASSWORD_RESET_REDIRECT = "https://app.tefter.de/passwort-zuruecksetzen";
 
 /**
  * Fordert eine E-Mail zum Zurücksetzen des Passworts an. Gibt aus
@@ -34,10 +32,15 @@ export async function requestPasswordReset(
     return { error: "Bitte gib eine gültige E-Mail-Adresse ein." };
   }
 
+  // Zieladresse aus NEXT_PUBLIC_SITE_URL (Fallback: Origin der Anfrage) statt
+  // fest verdrahtet – sonst zeigt der Link aus der lokalen Umgebung oder einem
+  // Preview-Deploy auf die Produktion.
+  const base = siteUrlFromHeaders(await headers());
+
   const supabase = await createClient();
   // Fehler bewusst nicht an den Nutzer weitergeben (keine Existenz-Preisgabe).
   await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: PASSWORD_RESET_REDIRECT,
+    redirectTo: `${base}/passwort-zuruecksetzen`,
   });
 
   return {
@@ -92,14 +95,16 @@ export async function register(
     return { error: "Das Passwort muss mindestens 6 Zeichen lang sein." };
   }
 
-  const origin = (await headers()).get("origin") ?? "";
+  // Nicht aus dem rohen origin-Header bauen: Fehlt er oder trägt er die
+  // containerinterne Adresse, landete bisher `0.0.0.0:3000` im Bestätigungslink.
+  const base = siteUrlFromHeaders(await headers());
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo: `${base}/auth/callback`,
       data: { full_name: fullName },
     },
   });

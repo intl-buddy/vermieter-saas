@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { translateAuthError } from "@/lib/auth";
+import { siteUrl } from "@/lib/site-url";
 import {
   Card,
   CardContent,
@@ -40,7 +41,12 @@ export function KontoSection({ userEmail }: { userEmail: string }) {
     }
 
     setEmailPending(true);
-    const { error } = await supabase.auth.updateUser({ email });
+    // Ohne emailRedirectTo nimmt GoTrue die im Supabase-Dashboard hinterlegte
+    // Site-URL – die passt nicht zwangsläufig zu dieser Umgebung.
+    const { error } = await supabase.auth.updateUser(
+      { email },
+      { emailRedirectTo: `${siteUrl(window.location.origin)}/auth/callback` },
+    );
     if (error) {
       toast.error(translateAuthError(error.message));
       setEmailPending(false);

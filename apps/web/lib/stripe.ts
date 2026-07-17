@@ -38,10 +38,6 @@ export function planFromPriceId(priceId: string): PlanKey | null {
   return null;
 }
 
-/** Öffentliche Basis-URL (für success/cancel/return URLs). */
-export function siteUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
-    "http://localhost:3000"
-  );
-}
+// Die öffentliche Basis-URL (success/cancel/return URLs) kommt aus
+// lib/site-url.ts – eine Quelle für alle nach außen sichtbaren Links.
+export { siteUrl } from "./site-url";

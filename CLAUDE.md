@@ -86,6 +86,36 @@ Entfernt eine Migration eine Spalte, muss sie auch aus der Liste verschwinden.
   über `assertWriteAccess`/`requireWriteAccess` (`lib/access.ts`) serverseitig
   abgelehnt, sobald der Status nicht `active`/`trial` ist.
 
+## Auth-Redirects / öffentliche URLs (verbindlich)
+- Jeder Link, der in einer E-Mail landet oder von außen angesprungen wird, wird
+  über `siteUrl()` / `siteUrlFromHeaders()` (`lib/site-url.ts`) gebaut – niemals
+  aus `request.url` oder dem rohen `origin`-Header. Der Container lauscht auf
+  `0.0.0.0:3000`; diese Adresse ist von außen nicht erreichbar und landete so
+  schon in Bestätigungsmails.
+- Reihenfolge: `NEXT_PUBLIC_SITE_URL` → `origin`-Header bzw.
+  `window.location.origin` → Proxy-Header (`x-forwarded-host`/`-proto`) →
+  `http://localhost:3000`. Containerinterne Hosts werden verworfen.
+- Betrifft alle Stellen mit `emailRedirectTo`/`redirectTo`: `signUp`,
+  `resetPasswordForEmail` (beide `app/actions.ts`), `updateUser` bei
+  E-Mail-Änderung (`einstellungen/KontoSection.tsx`) und `/auth/callback`.
+
+### ⚠️ NEXT_PUBLIC_SITE_URL: Build **und** Runtime
+Next.js backt `NEXT_PUBLIC_*` im **Client-Bundle zur Build-Zeit** als Literal
+ein; serverseitig wird `process.env` zur **Laufzeit** gelesen. In Coolify muss
+`NEXT_PUBLIC_SITE_URL` deshalb **als Build Variable *und* als Runtime Variable**
+gesetzt sein – im Dockerfile ist sie als `ARG` durchgereicht. Fehlt die Build
+Variable, ist der Wert im Browser `undefined`, ohne dass etwas bricht: Es greift
+still der Fallback, und der Fehler zeigt sich erst in der Mail.
+
+### Redirect wird abgelehnt („requested path is invalid")
+GoTrue akzeptiert nur Redirect-Ziele, die zur konfigurierten Site-URL passen
+oder in der Allowlist stehen. Schlägt eine Bestätigung mit „requested path is
+invalid" fehl, muss das Ziel in Supabase hinterlegt werden:
+Dashboard → Authentication → URL Configuration → **Redirect URLs**
+(self-hosted: `ADDITIONAL_REDIRECT_URLS` in der GoTrue-Konfiguration), z. B.
+`https://app.tefter.de/**`. Für lokale Tests zusätzlich
+`http://localhost:3000/**`.
+
 ## Preise / Stripe (verbindlich)
 - Anzeige-Preise werden ausschließlich aus dem `PLANS`-Objekt in
   `packages/core` gerendert – das ist die einzige Quelle.

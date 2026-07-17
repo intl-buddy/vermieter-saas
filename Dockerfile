@@ -18,6 +18,13 @@ ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+# Öffentliche Basis-URL für alle Links, die in E-Mails landen. Im Client-Bundle
+# wird der Wert zur Build-Zeit eingebacken – fehlt das Build-Arg, ist er dort
+# `undefined` und es greift nur der Fallback. Serverseitig wird zusätzlich zur
+# Laufzeit gelesen, deshalb in Coolify als Build- UND Runtime-Variable setzen.
+ARG NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+
 RUN npx turbo run build --filter=web
 
 # ---- Stage 3: minimal production runtime ----
