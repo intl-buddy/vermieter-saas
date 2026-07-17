@@ -13,52 +13,39 @@ export default function ImpressumPage() {
         Diensteanbieter
       </h2>
       <p className="mb-3">
-        [Name des Betreibers / Firma]
+        Omer Alic
         <br />
-        [Straße und Hausnummer]
+        Schützenstr. 131
         <br />
-        [PLZ und Ort]
+        45476 Mülheim an der Ruhr
         <br />
-        [Land]
+        Deutschland
       </p>
-
-      <h2 className="mb-2 mt-8 text-lg font-semibold text-foreground">
-        Vertreten durch
-      </h2>
-      <p className="mb-3">[Vertretungsberechtigte Person, falls zutreffend]</p>
 
       <h2 className="mb-2 mt-8 text-lg font-semibold text-foreground">
         Kontakt
       </h2>
       <p className="mb-3">
-        Telefon: [Telefonnummer]
+        Telefon: 0208 7801 5120
         <br />
-        E-Mail: [E-Mail-Adresse]
-      </p>
-
-      <h2 className="mb-2 mt-8 text-lg font-semibold text-foreground">
-        Umsatzsteuer-Identifikationsnummer
-      </h2>
-      <p className="mb-3">
-        Umsatzsteuer-Identifikationsnummer gemäß § 27a Umsatzsteuergesetz:
-        <br />
-        [USt-IdNr., z. B. DE123456789]
-      </p>
-
-      <h2 className="mb-2 mt-8 text-lg font-semibold text-foreground">
-        Registereintrag
-      </h2>
-      <p className="mb-3">
-        [Registergericht und Registernummer, falls zutreffend – sonst entfernen]
+        E-Mail:{" "}
+        <a
+          href="mailto:service@tefter.de"
+          className="text-secondary hover:underline"
+        >
+          service@tefter.de
+        </a>
       </p>
 
       <h2 className="mb-2 mt-8 text-lg font-semibold text-foreground">
         Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV
       </h2>
       <p className="mb-3">
-        [Name]
+        Omer Alic
         <br />
-        [Anschrift, falls abweichend]
+        Schützenstr. 131
+        <br />
+        45476 Mülheim an der Ruhr
       </p>
 
       <h2 className="mb-2 mt-8 text-lg font-semibold text-foreground">
@@ -78,6 +65,8 @@ export default function ImpressumPage() {
         . Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren
         vor einer Verbraucherschlichtungsstelle teilzunehmen.
       </p>
+
+      <p className="mt-8 text-neutral-500">Stand: Juli 2026</p>
     </LegalShell>
   );
 }

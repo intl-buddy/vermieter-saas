@@ -290,6 +290,13 @@ export const EXPECTED_COLUMNS: ExpectedColumn[] = [
     column: "monthly_gross",
     since: "017_admin_analytics.sql",
   },
+
+  // --- 018: Zustimmung AGB/Datenschutz/AVV --------------------------------
+  {
+    table: "users",
+    column: "terms_accepted_at",
+    since: "018_terms_consent.sql",
+  },
 ];
 
 /** Kompaktes `tabelle.spalte`-Kürzel – Format der `missing`-Liste in /api/health. */

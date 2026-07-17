@@ -106,6 +106,7 @@ export async function register(
   const fullName = String(formData.get("full_name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const termsAccepted = formData.get("terms") === "on";
 
   if (!fullName || !email || !password) {
     return { error: "Bitte alle Felder ausfüllen." };
@@ -116,18 +117,29 @@ export async function register(
   if (password.length < 6) {
     return { error: "Das Passwort muss mindestens 6 Zeichen lang sein." };
   }
+  if (!termsAccepted) {
+    return {
+      error:
+        "Bitte stimme den AGB, der Datenschutzerklärung und dem AVV zu.",
+    };
+  }
 
   // Nicht aus dem rohen origin-Header bauen: Fehlt er oder trägt er die
   // containerinterne Adresse, landete bisher `0.0.0.0:3000` im Bestätigungslink.
   const base = siteUrlFromHeaders(await headers());
 
   const supabase = await createClient();
+  // Zustimmungszeitpunkt in den Metadaten hinterlegen; der handle_new_user-
+  // Trigger schreibt ihn beim Anlegen der Zeile nach users.terms_accepted_at.
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       emailRedirectTo: `${base}/auth/callback`,
-      data: { full_name: fullName },
+      data: {
+        full_name: fullName,
+        terms_accepted_at: new Date().toISOString(),
+      },
     },
   });
 

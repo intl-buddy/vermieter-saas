@@ -33,6 +33,14 @@ export function FooterLinks({
       <Link href="/datenschutz" className="hover:underline">
         Datenschutz
       </Link>
+      <span aria-hidden>·</span>
+      <Link href="/agb" className="hover:underline">
+        AGB
+      </Link>
+      <span aria-hidden>·</span>
+      <Link href="/avv" className="hover:underline">
+        AVV
+      </Link>
     </nav>
   );
 }

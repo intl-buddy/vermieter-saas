@@ -81,6 +81,41 @@ export default function RegisterPage() {
                 placeholder="Mindestens 6 Zeichen"
               />
             </div>
+            <label className="flex items-start gap-2 text-sm text-neutral-600">
+              <input
+                type="checkbox"
+                name="terms"
+                required
+                className="mt-0.5 size-4 shrink-0"
+              />
+              <span>
+                Ich habe die{" "}
+                <Link
+                  href="/agb"
+                  target="_blank"
+                  className="font-medium text-primary hover:underline"
+                >
+                  AGB
+                </Link>
+                , die{" "}
+                <Link
+                  href="/datenschutz"
+                  target="_blank"
+                  className="font-medium text-primary hover:underline"
+                >
+                  Datenschutzerklärung
+                </Link>{" "}
+                und den{" "}
+                <Link
+                  href="/avv"
+                  target="_blank"
+                  className="font-medium text-primary hover:underline"
+                >
+                  AVV
+                </Link>{" "}
+                gelesen und stimme zu.
+              </span>
+            </label>
             <SubmitButton />
           </form>
           <p className="mt-6 text-center text-sm text-muted-foreground">
