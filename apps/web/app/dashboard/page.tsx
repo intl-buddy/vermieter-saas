@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CreateRecordDialog } from "@/app/belege/CreateRecordDialog";
 import { CreateTaskDialog } from "@/app/aufgaben/CreateTaskDialog";
 import { CheckoutToast } from "./CheckoutToast";
+import { StatsSection } from "./StatsSection";
 import { cn } from "@/lib/utils";
 
 const ACTION_CARD_CLS =
@@ -277,6 +278,8 @@ export default async function DashboardPage({
           />
         </div>
       </section>
+
+      <StatsSection />
     </AppShell>
   );
 }
