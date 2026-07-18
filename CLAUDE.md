@@ -23,8 +23,9 @@ Supabase SSR, Tailwind v4 + shadcn/ui). Geteilte Logik/Typen: `packages/core`
 ### Deploy-Checkliste (verbindlich, in dieser Reihenfolge)
 1. `npm run build` – muss grün sein (dazu `npm test`).
 2. Push (Coolify baut und deployt automatisch).
-3. **Migration ausführen:** neue Dateien aus `supabase/migrations/` im Supabase
-   SQL Editor einspielen, in aufsteigender Nummernfolge.
+3. **Migration ausführen:** `npm run db:migrate` (spielt ausstehende Dateien
+   aus `supabase/migrations/` in aufsteigender Reihenfolge gegen die Live-DB
+   ein, siehe unten). Alternativ manuell im Supabase SQL Editor.
 4. `npm run gen-types` – Typen an das neue Schema angleichen, Ergebnis
    committen. `database.types.ts` muss exakt zu den Migrationen passen.
 5. **`/api/health` prüfen:** muss `{"status":"ok"}` liefern. `"degraded"` mit
@@ -37,14 +38,26 @@ Supabase SSR, Tailwind v4 + shadcn/ui). Geteilte Logik/Typen: `packages/core`
 ## Datenbank / Migrationen
 - Schema-Quelle ist `supabase/migrations/` (fortlaufend nummeriert). Der Code
   (inkl. `packages/core/src/database.types.ts`) muss exakt dazu passen.
-- Migrationen werden **nicht** automatisch ausgeführt – der Nutzer spielt sie
-  selbst im Supabase SQL Editor ein.
+- Migrationen werden **nicht** beim Deploy automatisch ausgeführt. Sie werden
+  mit `npm run db:migrate` gegen die Live-DB eingespielt (oder manuell im
+  Supabase SQL Editor).
+
+### ⚠️ Migrations-Ausführung: `npm run db:migrate` (verbindlich)
+**Nach jedem Auftrag mit Migration: `npm run db:migrate` ausführen.**
+`scripts/migrate.sh` liest `.env.deploy` (gitignored; Vorlage
+`.env.deploy.example` mit `SSH_HOST`, `DB_CONTAINER_FILTER`, `DB_PASSWORD`),
+vergleicht `supabase/migrations/` mit der Tracking-Tabelle `schema_migrations`
+in der Produktions-DB (per `ssh` + `docker exec … psql`), zeigt die
+ausstehenden Migrationen an, fragt einmal „Ausführen? (y/n)", spielt sie bei
+`y` in Reihenfolge ein, vermerkt sie in `schema_migrations` und prüft zum
+Schluss `/api/health`. Beim ersten Lauf wird die Tabelle angelegt und
+001–016 als Baseline markiert.
 
 ### ⚠️ Migrations-Regel (verbindlich)
 Jeder Auftrag, der eine Migrationsdatei anlegt oder ändert, MUSS am Ende der
 Antwort mit diesem prominenten Hinweis abschließen:
 
-> **⚠️ MIGRATION AUSFÜHREN: `<Datei>` im SQL Editor, BEVOR getestet wird.**
+> **⚠️ MIGRATION AUSFÜHREN: `npm run db:migrate` (Datei `<Datei>`), BEVOR getestet wird.**
 
 Bei mehreren Dateien alle nennen, in Ausführungsreihenfolge.
 
