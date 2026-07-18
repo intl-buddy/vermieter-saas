@@ -1,6 +1,17 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Euro, Mail, Calculator, FileText, Check, Shield } from "lucide-react";
+import {
+  Euro,
+  Mail,
+  Calculator,
+  FileText,
+  Check,
+  Shield,
+  Building2,
+  Receipt,
+  ClipboardList,
+  Smartphone,
+} from "lucide-react";
 import { Reveal } from "./Reveal";
 import { PricingTeaser } from "./PricingTeaser";
 import { REGISTER_URL, LOGIN_URL } from "./config";
@@ -69,6 +80,100 @@ const FEATURES = [
     icon: FileText,
     title: "Dokumente & Übergabe",
     text: "Mietvertrag, Abmahnung, Wohnungsgeberbescheinigung und Übergabeprotokoll mit Unterschrift am Handy.",
+  },
+];
+
+const FEATURE_CATEGORIES = [
+  {
+    icon: Building2,
+    title: "Stammdaten & Verwaltung",
+    items: [
+      "Objekte, Einheiten & Mietverhältnisse zentral verwalten",
+      "Personenzahl-Historie je Mietverhältnis",
+      "Staffel-, Index- und Standardmiete",
+      "Mieterwechsel mit Beendigung & Neuvermietung",
+      "Geführte Ersteinrichtung in 10 Minuten",
+    ],
+  },
+  {
+    icon: Euro,
+    title: "Mieteingang & Mahnwesen",
+    items: [
+      "Automatische monatliche Soll-Stellungen",
+      "Offene Posten auf einen Blick",
+      "Zahlungen erfassen inkl. Rückbuchungen",
+      "Mahnung in 3 Stufen mit einem Klick als PDF",
+      "Mahnversand direkt per E-Mail",
+      "Automatische Eskalationslogik",
+    ],
+  },
+  {
+    icon: Calculator,
+    title: "Nebenkostenabrechnung",
+    items: [
+      "Geführter Assistent in 7 Schritten",
+      "Tagesgenaue Abrechnung bei Mieterwechsel",
+      "Alle Umlageschlüssel (Fläche, Personen, Einheiten, direkt)",
+      "Personentage statt Stichtag",
+      "Heizkosten aus der Messdienst-Abrechnung",
+      "Nachvollziehbarer Rechenweg auf jedem PDF",
+      "§ 35a-Ausweis für die Steuererklärung der Mieter",
+      "Interaktive Kostenarten-Checkliste mit Erklärungen",
+    ],
+  },
+  {
+    icon: Receipt,
+    title: "Belege & Steuern",
+    items: [
+      "Belegablage mit Foto/PDF-Upload",
+      "Zuordnung zu Objekt und Kostenart",
+      "Umlagefähig/nicht umlagefähig getrennt",
+      "EÜR-Export als CSV (Zufluss-/Abflussprinzip)",
+      "Kostenauswertung nach Kategorien",
+    ],
+  },
+  {
+    icon: FileText,
+    title: "Dokumente & Vorlagen",
+    items: [
+      "Mietvertrag mit allen Anlagen (BetrKV, SEPA, Hausordnung, Lüftungshinweise)",
+      "Abmahnungen in 4 Varianten",
+      "Wohnungsgeberbescheinigung (§ 19 BMG)",
+      "Übergabeprotokoll mit Fingerunterschrift am Handy",
+      "Automatischer Versand an den Mieter per E-Mail",
+    ],
+  },
+  {
+    icon: ClipboardList,
+    title: "Aufgaben & Überblick",
+    items: [
+      "Wiederkehrende Aufgaben (Zählerstände, Wartungen)",
+      "Automatische Erinnerung bei Fälligkeit",
+      "Dashboard mit Soll/Ist-Mieteinnahmen",
+      "Vermietungsquote & Kostenstruktur",
+      "Offene Posten je Mieter",
+    ],
+  },
+  {
+    icon: Shield,
+    title: "Sicherheit & Daten",
+    items: [
+      "Hosting in Deutschland 🇩🇪",
+      "DSGVO-konform inkl. AVV",
+      "Tägliche verschlüsselte Backups",
+      "Kompletter Datenexport jederzeit (ZIP)",
+      "Kein Tracking, keine Werbung",
+    ],
+  },
+  {
+    icon: Smartphone,
+    title: "Mobil & Zugang",
+    items: [
+      "Für Handy & Desktop optimiert",
+      "Als App auf den Homescreen installierbar",
+      "Übergabeprotokoll direkt vor Ort ausfüllen",
+      "14 Tage kostenlos testen, ohne Kreditkarte",
+    ],
   },
 ];
 
@@ -233,6 +338,58 @@ export default function MarketingPage() {
               })}
             </div>
           </div>
+        </section>
+
+        {/* Alle Funktionen in der Übersicht */}
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+          <Reveal>
+            <h2 className="text-center text-3xl font-bold tracking-tight text-secondary sm:text-4xl">
+              Alle Funktionen in der Übersicht
+            </h2>
+          </Reveal>
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURE_CATEGORIES.map((cat, i) => {
+              const Icon = cat.icon;
+              return (
+                <Reveal key={cat.title} delay={(i % 3) * 80}>
+                  <div className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
+                        <Icon className="size-6" />
+                      </span>
+                      <h3 className="text-lg font-semibold text-secondary">
+                        {cat.title}
+                      </h3>
+                    </div>
+                    <ul className="mt-5 flex flex-col gap-2.5">
+                      {cat.items.map((item) => (
+                        <li key={item} className="flex items-start gap-2.5">
+                          <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                          <span className="text-sm text-neutral-600">
+                            {item}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </Reveal>
+              );
+            })}
+          </div>
+          <Reveal>
+            <div className="mt-12 flex flex-col items-center gap-4 text-center">
+              <p className="max-w-2xl text-neutral-600">
+                Alle Funktionen in jedem Paket enthalten – der Unterschied liegt
+                nur in der Zahl der Einheiten.
+              </p>
+              <a
+                href={REGISTER_URL}
+                className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary-600 hover:shadow-md"
+              >
+                Kostenlos testen
+              </a>
+            </div>
+          </Reveal>
         </section>
 
         {/* Story */}
