@@ -413,7 +413,7 @@ export default function MarketingPage() {
               </div>
               <div>
                 <blockquote className="text-xl font-medium leading-relaxed text-neutral-800">
-                  „Ich verwalte hauptberuflich Wohnungen im Ruhrgebiet. tefter ist
+                  „Ich verwalte hauptberuflich bundesweit Wohnungen. tefter ist
                   die App, die ich mir für private Vermieter immer gewünscht habe
                   – gebaut aus der täglichen Praxis, nicht am Reißbrett."
                 </blockquote>
