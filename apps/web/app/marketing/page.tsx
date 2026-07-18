@@ -52,7 +52,7 @@ const PROBLEMS = [
   {
     problem: "Mahnungen kosten Überwindung",
     solution:
-      "Rückstand erkannt, Mahnung mit einem Klick als fertiges PDF.",
+      "Rückstand erkannt, Mahnung mit einem Klick als fertiges PDF und mit einem weiteren Klick per E-Mail versendet.",
   },
   {
     problem: "Angst vor der Nebenkostenabrechnung",
