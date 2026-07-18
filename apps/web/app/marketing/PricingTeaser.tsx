@@ -11,6 +11,14 @@ const EUR = new Intl.NumberFormat("de-DE", {
   currency: "EUR",
 });
 
+const CORE_FEATURES = [
+  "Mieteingang & Mahnwesen in 3 Stufen",
+  "Geführte Nebenkostenabrechnung",
+  "Dokumente & Vorlagen",
+  "Übergabeprotokoll am Handy",
+  "Belege & EÜR-Export",
+];
+
 export function PricingTeaser() {
   const [yearly, setYearly] = useState(false);
 
@@ -40,6 +48,22 @@ export function PricingTeaser() {
         </button>
       </div>
 
+      {/* Vertrauens-Zeile über den Preiskarten */}
+      <div className="mb-8 flex flex-col items-center justify-center gap-2 text-sm font-medium text-neutral-600 sm:flex-row sm:gap-6">
+        <span className="flex items-center gap-1.5">
+          <Check className="size-4 shrink-0 text-primary" />
+          Voller Funktionsumfang in jedem Paket
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Check className="size-4 shrink-0 text-primary" />
+          Keine Einrichtungsgebühr
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Check className="size-4 shrink-0 text-primary" />
+          Jederzeit kündbar
+        </span>
+      </div>
+
       <div className="grid w-full grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {PLAN_ORDER.map((key) => {
           const plan = PLANS[key];
@@ -61,9 +85,6 @@ export function PricingTeaser() {
                 </span>
               ) : null}
               <h3 className="text-lg font-bold text-secondary">{plan.name}</h3>
-              <p className="mt-1 text-sm text-neutral-500">
-                Bis zu {plan.unitLimit} Einheiten
-              </p>
               <div className="mt-4 flex items-baseline gap-1">
                 <span className="text-3xl font-extrabold tracking-tight text-foreground">
                   {EUR.format(perMonth)}
@@ -75,6 +96,21 @@ export function PricingTeaser() {
                   ? `${EUR.format(plan.priceYearlyTotal)} jährlich abgerechnet`
                   : "monatlich abgerechnet"}
               </p>
+              <ul className="mt-5 flex flex-col gap-2 text-sm">
+                <li className="flex items-start gap-2 font-semibold text-secondary">
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                  Bis zu {plan.unitLimit} Einheiten
+                </li>
+                {CORE_FEATURES.map((feature) => (
+                  <li
+                    key={feature}
+                    className="flex items-start gap-2 text-neutral-600"
+                  >
+                    <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
               <a
                 href={REGISTER_URL}
                 className={cn(
@@ -93,9 +129,6 @@ export function PricingTeaser() {
         {/* Enterprise */}
         <div className="relative flex flex-col rounded-2xl border border-secondary-200 bg-secondary-50/40 p-6 shadow-sm">
           <h3 className="text-lg font-bold text-secondary">Enterprise</h3>
-          <p className="mt-1 text-sm text-neutral-500">
-            Ab {ENTERPRISE_MIN_UNITS} Einheiten
-          </p>
           <div className="mt-4 flex items-baseline gap-1">
             <span className="text-3xl font-extrabold tracking-tight text-foreground">
               Individuell
@@ -104,12 +137,23 @@ export function PricingTeaser() {
           <p className="mt-1 h-5 text-xs text-neutral-500">
             auf deine Portfoliogröße zugeschnitten
           </p>
-          <ul className="mt-4 flex flex-col gap-1.5 text-sm text-neutral-600">
-            <li className="flex items-center gap-2">
-              <Check className="size-4 text-primary" /> Alle Funktionen
+          <ul className="mt-5 flex flex-col gap-2 text-sm">
+            <li className="flex items-start gap-2 font-semibold text-secondary">
+              <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+              Ab {ENTERPRISE_MIN_UNITS} Einheiten
             </li>
-            <li className="flex items-center gap-2">
-              <Check className="size-4 text-primary" /> Priorisierter Support
+            {CORE_FEATURES.map((feature) => (
+              <li
+                key={feature}
+                className="flex items-start gap-2 text-neutral-600"
+              >
+                <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                {feature}
+              </li>
+            ))}
+            <li className="flex items-start gap-2 text-neutral-600">
+              <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+              Priorisierter Support
             </li>
           </ul>
           <a

@@ -187,6 +187,10 @@ const FAQS = [
     a: "Ausschließlich in Deutschland, auf einem eigenen Server in einem Rechenzentrum in Nürnberg. tefter ist DSGVO-konform; ein Auftragsverarbeitungsvertrag (AVV) ist inklusive und wird bei der Registrierung geschlossen.",
   },
   {
+    q: "Gibt es versteckte Kosten oder Zusatzmodule?",
+    a: "Nein. Jedes Paket enthält alle Funktionen von tefter – Mahnwesen, Nebenkostenabrechnung, Dokumente, Übergabeprotokolle, alles. Du zahlst ausschließlich nach der Zahl deiner Einheiten. Es gibt keine Einrichtungsgebühr, keine Aufpreise für Funktionen und keine automatischen Preiserhöhungen.",
+  },
+  {
     q: "Kann ich jederzeit kündigen?",
     a: "Ja. Du kannst dein Abo jederzeit zum Ende der Laufzeit über das Kundenportal kündigen – monatlich oder jährlich, ganz wie du möchtest.",
   },
@@ -377,14 +381,22 @@ export default function MarketingPage() {
             })}
           </div>
           <Reveal>
-            <div className="mt-12 flex flex-col items-center gap-4 text-center">
-              <p className="max-w-2xl text-neutral-600">
-                Alle Funktionen in jedem Paket enthalten – der Unterschied liegt
-                nur in der Zahl der Einheiten.
+            <div className="mx-auto mt-12 max-w-3xl rounded-2xl border border-primary-200 bg-primary-50 px-6 py-8 text-center sm:px-10">
+              <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+                <Check className="size-7" />
+              </span>
+              <p className="mt-4 text-xl font-bold text-secondary sm:text-2xl">
+                Alle Funktionen. In jedem Paket. Ohne Aufpreis.
+              </p>
+              <p className="mx-auto mt-3 max-w-2xl text-neutral-600">
+                Vom ersten Tag an nutzt du den vollen Funktionsumfang – der
+                Unterschied zwischen den Paketen liegt allein in der Zahl deiner
+                Einheiten. Keine versteckten Kosten, keine Zusatzmodule, keine
+                Überraschungen.
               </p>
               <a
                 href={REGISTER_URL}
-                className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary-600 hover:shadow-md"
+                className="mt-6 inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary-600 hover:shadow-md"
               >
                 Kostenlos testen
               </a>
