@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import {
   Euro,
@@ -273,16 +274,24 @@ export default function MarketingPage() {
               </p>
             </Reveal>
 
-            {/* App-Screenshot-Platzhalter */}
+            {/* App-Screenshot im dezenten Browser-Mockup */}
             <Reveal delay={120}>
-              <div className="rounded-2xl border border-neutral-200 bg-white p-2 shadow-xl">
+              <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white p-2 shadow-xl">
                 <div className="flex items-center gap-1.5 px-2 py-2">
                   <span className="size-2.5 rounded-full bg-danger-200" />
                   <span className="size-2.5 rounded-full bg-gold-300" />
                   <span className="size-2.5 rounded-full bg-primary-200" />
                 </div>
-                <div className="flex aspect-[16/10] items-center justify-center rounded-xl bg-neutral-100 text-sm text-neutral-400">
-                  Dashboard-Vorschau
+                <div className="overflow-hidden rounded-xl border border-neutral-100">
+                  <Image
+                    src="/marketing/dashboard-hero.webp"
+                    alt="tefter Dashboard – Kennzahlen, Schnellaktionen und Mieteinnahmen auf einen Blick"
+                    width={1600}
+                    height={862}
+                    priority
+                    sizes="(min-width: 1024px) 40rem, 100vw"
+                    className="h-auto w-full"
+                  />
                 </div>
               </div>
             </Reveal>
