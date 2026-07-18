@@ -10,6 +10,7 @@ import {
   Calculator,
   FileText,
   Shield,
+  LifeBuoy,
 } from "lucide-react";
 import { logout } from "@/app/actions";
 import {
@@ -72,6 +73,12 @@ export function UserMenu({
             </Link>
           </DropdownMenuItem>
         ) : null}
+        <DropdownMenuItem asChild>
+          <Link href="/hilfe">
+            <LifeBuoy className="size-4" />
+            Hilfe
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/einstellungen">
             <Settings className="size-4" />

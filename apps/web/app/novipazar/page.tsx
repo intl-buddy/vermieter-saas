@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LifeBuoy, ChevronRight } from "lucide-react";
 import {
   parseAdminStats,
   parseCityStats,
@@ -204,6 +206,29 @@ export default async function AdminPage() {
           Aggregierte Kennzahlen der Plattform.
         </p>
       </div>
+
+      {/* Verwaltung */}
+      <section className="mb-10">
+        <h2 className="mb-3 text-lg font-semibold">Verwaltung</h2>
+        <Link href="/novipazar/tickets" className="block">
+          <Card className="border-t-2 border-t-secondary-400 transition-colors hover:bg-neutral-50">
+            <CardContent className="flex items-center gap-4 p-5">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
+                <LifeBuoy className="size-6" />
+              </span>
+              <div className="min-w-0">
+                <div className="font-semibold text-foreground">
+                  Support-Tickets
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Anfragen aller Nutzer beantworten und verwalten.
+                </div>
+              </div>
+              <ChevronRight className="ml-auto size-5 shrink-0 text-neutral-400" />
+            </CardContent>
+          </Card>
+        </Link>
+      </section>
 
       {/* Umsatz */}
       <section className="mb-10">

@@ -297,6 +297,52 @@ export const EXPECTED_COLUMNS: ExpectedColumn[] = [
     column: "terms_accepted_at",
     since: "018_terms_consent.sql",
   },
+  // --- 019: Hilfe / Support-Tickets ---------------------------------------
+  {
+    table: "support_tickets",
+    column: "user_id",
+    since: "019_support_tickets.sql",
+  },
+  {
+    table: "support_tickets",
+    column: "subject",
+    since: "019_support_tickets.sql",
+  },
+  {
+    table: "support_tickets",
+    column: "category",
+    since: "019_support_tickets.sql",
+  },
+  {
+    table: "support_tickets",
+    column: "message",
+    since: "019_support_tickets.sql",
+  },
+  {
+    table: "support_tickets",
+    column: "status",
+    since: "019_support_tickets.sql",
+  },
+  {
+    table: "support_tickets",
+    column: "admin_note",
+    since: "019_support_tickets.sql",
+  },
+  {
+    table: "ticket_messages",
+    column: "ticket_id",
+    since: "019_support_tickets.sql",
+  },
+  {
+    table: "ticket_messages",
+    column: "sender",
+    since: "019_support_tickets.sql",
+  },
+  {
+    table: "ticket_messages",
+    column: "message",
+    since: "019_support_tickets.sql",
+  },
 ];
 
 /** Kompaktes `tabelle.spalte`-Kürzel – Format der `missing`-Liste in /api/health. */

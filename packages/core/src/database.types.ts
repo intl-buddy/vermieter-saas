@@ -696,6 +696,49 @@ export type Database = {
           },
         ]
       }
+      support_tickets: {
+        Row: {
+          admin_note: string | null
+          category: Database["public"]["Enums"]["ticket_category"]
+          created_at: string
+          id: string
+          message: string
+          status: Database["public"]["Enums"]["ticket_status"]
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          category: Database["public"]["Enums"]["ticket_category"]
+          created_at?: string
+          id?: string
+          message: string
+          status?: Database["public"]["Enums"]["ticket_status"]
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          category?: Database["public"]["Enums"]["ticket_category"]
+          created_at?: string
+          id?: string
+          message?: string
+          status?: Database["public"]["Enums"]["ticket_status"]
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_templates: {
         Row: {
           created_at: string
@@ -906,6 +949,37 @@ export type Database = {
           },
         ]
       }
+      ticket_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          sender: Database["public"]["Enums"]["ticket_sender"]
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          sender: Database["public"]["Enums"]["ticket_sender"]
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          sender?: Database["public"]["Enums"]["ticket_sender"]
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       units: {
         Row: {
           created_at: string
@@ -1092,6 +1166,22 @@ export type Database = {
     Functions: {
       admin_feature_usage: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_funnel_stats: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_list_tickets: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_reply_ticket: {
+        Args: { p_ticket_id: string; p_message: string }
+        Returns: Json
+      }
+      admin_set_ticket_note: {
+        Args: { p_ticket_id: string; p_note: string }
+        Returns: undefined
+      }
+      admin_set_ticket_status: {
+        Args: {
+          p_ticket_id: string
+          p_status: Database["public"]["Enums"]["ticket_status"]
+        }
+        Returns: undefined
+      }
       admin_metrics_history: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_portfolio_distribution: {
         Args: Record<PropertyKey, never>
@@ -1189,6 +1279,9 @@ export type Database = {
         | "semiannually"
         | "yearly"
       task_status: "open" | "done" | "overdue"
+      ticket_category: "frage" | "problem" | "idee" | "abrechnung"
+      ticket_sender: "user" | "admin"
+      ticket_status: "open" | "in_progress" | "closed"
       unit_type: "residential" | "commercial" | "parking" | "other"
     }
     CompositeTypes: {
@@ -1384,6 +1477,9 @@ export const Constants = {
         "yearly",
       ],
       task_status: ["open", "done", "overdue"],
+      ticket_category: ["frage", "problem", "idee", "abrechnung"],
+      ticket_sender: ["user", "admin"],
+      ticket_status: ["open", "in_progress", "closed"],
       unit_type: ["residential", "commercial", "parking", "other"],
     },
   },

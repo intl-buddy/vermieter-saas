@@ -7,3 +7,4 @@ export * from "./site-url";
 export * from "./onboarding";
 export * from "./admin";
 export * from "./dashboard-stats";
+export * from "./support";

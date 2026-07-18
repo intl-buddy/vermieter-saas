@@ -18,12 +18,13 @@ const PROTECTED_PREFIXES = [
   "/protokolle",
   "/einstellungen",
   "/mahnungen",
+  "/hilfe",
 ];
 
 // Geschützte Pfade, auf denen das Abo-Gating NICHT greift: In den
-// Einstellungen soll ein gesperrter Nutzer weiterhin sein Abo verwalten
-// können.
-const GATING_EXEMPT_PREFIXES = ["/einstellungen"];
+// Einstellungen soll ein gesperrter Nutzer weiterhin sein Abo verwalten –
+// und im Hilfebereich weiterhin den Support erreichen können.
+const GATING_EXEMPT_PREFIXES = ["/einstellungen", "/hilfe"];
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
