@@ -417,9 +417,14 @@ export default function MarketingPage() {
         <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6 sm:py-24">
           <Reveal>
             <figure className="flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
-              <div className="flex size-24 shrink-0 items-center justify-center rounded-full bg-secondary-100 text-2xl font-bold text-secondary">
-                OA
-              </div>
+              <Image
+                src="/marketing/omer-portrait.webp"
+                alt="Omer Alic, Hausverwalter und Gründer von tefter"
+                width={112}
+                height={112}
+                sizes="112px"
+                className="size-28 shrink-0 rounded-full object-cover shadow-md ring-2 ring-gold-400"
+              />
               <div>
                 <blockquote className="text-xl font-medium leading-relaxed text-neutral-800">
                   „Ich verwalte hauptberuflich bundesweit Wohnungen. tefter ist
