@@ -21,7 +21,7 @@ import { StatsSection } from "./StatsSection";
 import { cn } from "@/lib/utils";
 
 const ACTION_CARD_CLS =
-  "group block w-full rounded-xl border border-neutral-200 border-t-2 border-t-gold-400 bg-white p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md";
+  "group block w-full min-w-0 rounded-xl border border-neutral-200 border-t-2 border-t-gold-400 bg-white p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md";
 
 function QuickActionContent({
   icon: Icon,
@@ -44,8 +44,12 @@ function QuickActionContent({
       >
         <Icon className="size-5" />
       </span>
-      <div className="mt-3 font-semibold text-foreground">{title}</div>
-      <div className="text-sm text-muted-foreground">{subtitle}</div>
+      <div className="mt-3 truncate font-semibold text-foreground" title={title}>
+        {title}
+      </div>
+      <div className="truncate text-sm text-muted-foreground" title={subtitle}>
+        {subtitle}
+      </div>
     </>
   );
 }
@@ -257,7 +261,7 @@ export default async function DashboardPage({
             <QuickActionContent
               icon={Calculator}
               iconBg="bg-secondary-100 text-secondary-700"
-              title="Nebenkostenabrechnung"
+              title="NK-Abrechnung"
               subtitle="Betriebskosten abrechnen"
             />
           </Link>
