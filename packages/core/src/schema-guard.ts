@@ -343,6 +343,20 @@ export const EXPECTED_COLUMNS: ExpectedColumn[] = [
     column: "message",
     since: "019_support_tickets.sql",
   },
+
+  // --- 020: Direktzuordnung an ein Mietverhältnis -------------------------
+  {
+    table: "operating_costs_records",
+    column: "tenant_id",
+    since: "020_direct_tenant_allocation.sql",
+  },
+
+  // --- 021: Messdienst-Einzelabrechnung (Anlage) --------------------------
+  {
+    table: "billing_statements",
+    column: "messdienst_pdf_url",
+    since: "021_messdienst_pdf.sql",
+  },
 ];
 
 /** Kompaktes `tabelle.spalte`-Kürzel – Format der `missing`-Liste in /api/health. */

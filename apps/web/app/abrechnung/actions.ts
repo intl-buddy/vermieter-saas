@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { PDFDocument } from "pdf-lib";
 import {
   calculateBilling,
   computeOccupancy,
@@ -41,6 +42,7 @@ export type WizardRecord = {
   amount: number;
   is_apportionable: boolean;
   unit_id: string | null;
+  tenant_id: string | null;
   labor_cost_35a: number;
   type_35a: string;
   billing_period_start: string;
@@ -77,7 +79,50 @@ export type FinalizePayload = {
   prepaymentsOperating: Record<string, number>;
   prepaymentsHeating: Record<string, number>;
   prepaymentsSource: Record<string, string>;
+  /** Pfad der hochgeladenen Messdienst-Einzelabrechnung je Mietverhältnis. */
+  messdienstPdf?: Record<string, string>;
 };
+
+const MESSDIENST_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+
+/**
+ * Lädt die Einzelabrechnung des Messdienstleisters (PDF) in den statements-Bucket
+ * unter `{user_id}/messdienst/...`. Gibt den Storage-Pfad zurück, der später beim
+ * Finalisieren an das jeweilige Mieter-PDF angehängt wird.
+ */
+export async function uploadMessdienstPdf(
+  formData: FormData,
+): Promise<{ path?: string; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Bitte melde dich erneut an." };
+  const writeError = await assertWriteAccess(supabase, user.id);
+  if (writeError) return { error: writeError };
+
+  const file = formData.get("file");
+  const tenantId = String(formData.get("tenant_id") ?? "").trim();
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Keine Datei ausgewählt." };
+  }
+  if (file.type !== "application/pdf") {
+    return { error: "Nur PDF-Dateien werden unterstützt." };
+  }
+  if (file.size > MESSDIENST_MAX_BYTES) {
+    return { error: "Die Datei ist zu groß (max. 10 MB)." };
+  }
+
+  const safeTenant = tenantId.replace(/[^a-zA-Z0-9-]/g, "") || "unbekannt";
+  const path = `${user.id}/messdienst/${safeTenant}-${Date.now()}.pdf`;
+  const { error } = await supabase.storage
+    .from("statements")
+    .upload(path, file, { contentType: "application/pdf", upsert: true });
+  if (error) {
+    return { error: `Upload fehlgeschlagen: ${error.message}` };
+  }
+  return { path };
+}
 
 async function assembleData(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -163,7 +208,7 @@ async function assembleData(
   const { data: records } = await supabase
     .from("operating_costs_records")
     .select(
-      "id, cost_type, allocation_key, amount, is_apportionable, unit_id, labor_cost_35a, type_35a, billing_period_start, billing_period_end",
+      "id, cost_type, allocation_key, amount, is_apportionable, unit_id, tenant_id, labor_cost_35a, type_35a, billing_period_start, billing_period_end",
     )
     .eq("property_id", propertyId)
     .lte("billing_period_start", periodEnd)
@@ -237,6 +282,7 @@ function buildBillingInput(
     amount: r.amount,
     is_apportionable: r.is_apportionable,
     unit_id: r.unit_id,
+    tenant_id: r.tenant_id,
     labor_cost_35a: r.labor_cost_35a,
     type_35a: r.type_35a as Type35a,
   }));
@@ -431,6 +477,7 @@ export async function finalizeBilling(
       payload.prepaymentsSource[st.tenant_id] === "manual"
         ? "manual"
         : "calculated";
+    const messdienstPath = payload.messdienstPdf?.[st.tenant_id] ?? null;
 
     // Snapshot mit vollem Rechenweg (defensiv: neue Läufe haben alle Felder)
     const snapshot = st.positions.map((p) => ({
@@ -465,6 +512,7 @@ export async function finalizeBilling(
         occupancy_end: occ?.occTo ?? null,
         occupancy_days: st.occupancy_days,
         line_items: snapshot,
+        messdienst_pdf_url: messdienstPath,
       })
       .select("id")
       .single();
@@ -538,9 +586,33 @@ export async function finalizeBilling(
       paymentDeadline: deadline,
     });
 
+    // Messdienst-Einzelabrechnung (falls hochgeladen) als Anlage anhängen.
+    let outputPdf: Uint8Array = pdf;
+    if (messdienstPath) {
+      const { data: extBlob, error: dlError } = await supabase.storage
+        .from("statements")
+        .download(messdienstPath);
+      if (dlError || !extBlob) {
+        throw new Error(
+          `Messdienst-Anlage konnte nicht geladen werden: ${
+            dlError?.message ?? "unbekannter Fehler"
+          }`,
+        );
+      }
+      const extBytes = new Uint8Array(await extBlob.arrayBuffer());
+      const merged = await PDFDocument.create();
+      const base = await PDFDocument.load(pdf);
+      const ext = await PDFDocument.load(extBytes);
+      const basePages = await merged.copyPages(base, base.getPageIndices());
+      basePages.forEach((p) => merged.addPage(p));
+      const extPages = await merged.copyPages(ext, ext.getPageIndices());
+      extPages.forEach((p) => merged.addPage(p));
+      outputPdf = await merged.save();
+    }
+
     const path = `${user.id}/${statement.id}.pdf`;
-    const bytes = new Uint8Array(pdf.byteLength);
-    bytes.set(pdf);
+    const bytes = new Uint8Array(outputPdf.byteLength);
+    bytes.set(outputPdf);
     const { error: uploadError } = await supabase.storage
       .from("statements")
       .upload(path, bytes, { contentType: "application/pdf", upsert: true });
@@ -582,13 +654,13 @@ export async function deleteBillingRun(
   const writeError = await assertWriteAccess(supabase, user.id);
   if (writeError) return { error: writeError };
 
-  // PDF-Pfade der Statements ermitteln und aus dem Bucket entfernen.
+  // PDF-Pfade der Statements (inkl. Messdienst-Anlagen) aus dem Bucket entfernen.
   const { data: statements } = await supabase
     .from("billing_statements")
-    .select("pdf_url")
+    .select("pdf_url, messdienst_pdf_url")
     .eq("billing_run_id", runId);
   const paths = (statements ?? [])
-    .map((s) => s.pdf_url)
+    .flatMap((s) => [s.pdf_url, s.messdienst_pdf_url])
     .filter((p): p is string => !!p);
   if (paths.length > 0) {
     await supabase.storage.from("statements").remove(paths);

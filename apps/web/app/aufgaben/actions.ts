@@ -74,6 +74,47 @@ export async function createAdHocTask(
   return { success: "Aufgabe wurde angelegt." };
 }
 
+/** Bestehende (auch generierte) Aufgabe bearbeiten: Titel/Beschreibung/Fälligkeit/Zuordnung. */
+export async function updateTask(
+  _prevState: TaskFormState,
+  formData: FormData,
+): Promise<TaskFormState> {
+  const auth = await requireUserId();
+  if ("error" in auth) return { error: auth.error };
+
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return { error: "Aufgabe konnte nicht ermittelt werden." };
+
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const dueDate = String(formData.get("due_date") ?? "").trim();
+  const propertyId = optionalId(formData.get("property_id"));
+  const unitId = optionalId(formData.get("unit_id"));
+
+  if (!title || !dueDate) {
+    return { error: "Bitte Titel und Fälligkeitsdatum angeben." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("generated_tasks")
+    .update({
+      title,
+      description: description || null,
+      due_date: dueDate,
+      property_id: propertyId,
+      unit_id: unitId,
+    })
+    .eq("id", id);
+
+  if (error) {
+    return { error: `Speichern fehlgeschlagen: ${error.message}` };
+  }
+
+  revalidatePath("/aufgaben");
+  return { success: "Aufgabe wurde aktualisiert." };
+}
+
 /** Aufgabe abhaken: status='done', completed_at=jetzt. */
 export async function completeTask(id: string): Promise<void> {
   const guard = await requireWriteAccess();

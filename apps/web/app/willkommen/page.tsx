@@ -46,29 +46,35 @@ export default async function WillkommenPage({
   const propertyId = latestProperty?.id ?? null;
   const propertyName = latestProperty?.name ?? null;
 
-  // Jüngste Einheit des jüngsten Objekts (für die Mieter-Verknüpfung in Schritt 4).
-  let unitId: string | null = null;
-  let unitLabel: string | null = null;
-  let hasTenant = false;
+  // Alle Einheiten des jüngsten Objekts inkl. Mieter-Status (für die Schleifen
+  // in Schritt 3 & 4).
+  let units: { id: string; label: string; hasTenant: boolean }[] = [];
   if (propertyId) {
-    const { data: latestUnit } = await supabase
+    const { data: unitRows } = await supabase
       .from("units")
       .select("id, label")
       .eq("property_id", propertyId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    unitId = latestUnit?.id ?? null;
-    unitLabel = latestUnit?.label ?? null;
+      .order("created_at", { ascending: true });
+    const unitList = unitRows ?? [];
+    const unitIds = unitList.map((u) => u.id);
 
-    if (unitId) {
-      const { count } = await supabase
+    const tenantUnitIds = new Set<string>();
+    if (unitIds.length > 0) {
+      const { data: tenantRows } = await supabase
         .from("tenants")
-        .select("id", { count: "exact", head: true })
-        .eq("unit_id", unitId);
-      hasTenant = (count ?? 0) > 0;
+        .select("unit_id")
+        .in("unit_id", unitIds);
+      for (const t of tenantRows ?? []) tenantUnitIds.add(t.unit_id);
     }
+
+    units = unitList.map((u) => ({
+      id: u.id,
+      label: u.label,
+      hasTenant: tenantUnitIds.has(u.id),
+    }));
   }
+
+  const hasTenant = units.some((u) => u.hasTenant);
 
   // Ersten unerledigten Schritt aus den vorhandenen Daten ableiten.
   const firstUnfinished = firstUnfinishedStep({
@@ -78,7 +84,7 @@ export default async function WillkommenPage({
       filled(profile?.address_zip) &&
       filled(profile?.address_city),
     property: Boolean(propertyId),
-    unit: Boolean(unitId),
+    unit: units.length > 0,
     tenant: hasTenant,
   });
 
@@ -111,8 +117,7 @@ export default async function WillkommenPage({
       absender={absender}
       propertyId={propertyId}
       propertyName={propertyName}
-      unitId={unitId}
-      unitLabel={unitLabel}
+      units={units}
     />
   );
 }

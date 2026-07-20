@@ -1,18 +1,15 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { formatCurrency } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { RentRow } from "./RentRow";
 
 export const metadata = { title: "Mieteingang · tefter" };
 
@@ -82,40 +79,18 @@ export default async function MieteingangPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {balances.map((row) => {
-                const isArrears = (row.balance ?? 0) > 0;
-                return (
-                  <TableRow key={row.tenant_id}>
-                    <TableCell className="font-medium">
-                      <Link
-                        href={`/mieteingang/${row.tenant_id}`}
-                        className="block max-w-[220px] truncate text-foreground hover:text-primary"
-                      >
-                        {tenantName(row.first_name, row.last_name)}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-right tabular-nums text-muted-foreground">
-                      {formatCurrency(row.total_due)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-right tabular-nums text-muted-foreground">
-                      {formatCurrency(row.total_paid)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-right tabular-nums">
-                      {isArrears ? (
-                        <Badge variant="danger">
-                          {formatCurrency(row.balance)}
-                        </Badge>
-                      ) : row.balance === 0 ? (
-                        <Badge variant="gold">Alles bezahlt</Badge>
-                      ) : (
-                        <span className="text-success-700">
-                          {formatCurrency(row.balance)}
-                        </span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {balances.map((row) => (
+                <RentRow
+                  key={row.tenant_id ?? ""}
+                  row={{
+                    tenant_id: row.tenant_id ?? "",
+                    name: tenantName(row.first_name, row.last_name),
+                    total_due: row.total_due,
+                    total_paid: row.total_paid,
+                    balance: row.balance,
+                  }}
+                />
+              ))}
             </TableBody>
           </Table>
         </Card>

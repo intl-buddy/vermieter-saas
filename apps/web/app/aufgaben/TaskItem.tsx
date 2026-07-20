@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useTransition } from "react";
-import { Check, Building2 } from "lucide-react";
+import { Building2, Check, Pencil, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { completeTask, reopenTask } from "./actions";
+import { CreateTaskDialog, type EditTaskValues } from "./CreateTaskDialog";
+import type { PropertyOption, UnitOption } from "./ScopeFields";
 import { formatDate } from "@/lib/format";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -19,50 +22,53 @@ export type TaskItemData = {
   overdue: boolean;
   scopeLabel: string | null;
   scopeHref: string | null;
+  propertyId: string | null;
+  unitId: string | null;
 };
 
-export function TaskItem({ task }: { task: TaskItemData }) {
+export function TaskItem({
+  task,
+  properties,
+  units,
+}: {
+  task: TaskItemData;
+  properties: PropertyOption[];
+  units: UnitOption[];
+}) {
   const [pending, startTransition] = useTransition();
 
-  function onToggle() {
-    if (!task.done) {
-      startTransition(async () => {
-        await completeTask(task.id);
-        toast.success("Aufgabe erledigt", {
-          action: {
-            label: "Rückgängig",
-            onClick: () => {
-              void reopenTask(task.id);
-            },
+  function onComplete() {
+    startTransition(async () => {
+      await completeTask(task.id);
+      toast.success("Aufgabe erledigt", {
+        action: {
+          label: "Rückgängig",
+          onClick: () => {
+            void reopenTask(task.id);
           },
-        });
+        },
       });
-    } else {
-      startTransition(async () => {
-        await reopenTask(task.id);
-      });
-    }
+    });
   }
+
+  function onReopen() {
+    startTransition(async () => {
+      await reopenTask(task.id);
+    });
+  }
+
+  const editValues: EditTaskValues = {
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    dueDate: task.dueDate,
+    propertyId: task.propertyId,
+    unitId: task.unitId,
+  };
 
   return (
     <Card>
-      <CardContent className="flex items-start gap-3 p-4">
-        <button
-          type="button"
-          onClick={onToggle}
-          disabled={pending}
-          aria-pressed={task.done}
-          aria-label={task.done ? "Als offen markieren" : "Als erledigt markieren"}
-          className={cn(
-            "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border transition-colors disabled:opacity-50",
-            task.done
-              ? "border-primary bg-primary text-white"
-              : "border-neutral-300 bg-white hover:border-primary",
-          )}
-        >
-          {task.done ? <Check className="size-4" /> : null}
-        </button>
-
+      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span
@@ -110,6 +116,42 @@ export function TaskItem({ task }: { task: TaskItemData }) {
               </p>
             </details>
           ) : null}
+        </div>
+
+        {/* Aktionen: Bearbeiten + Erledigt (bzw. Wieder öffnen) */}
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <CreateTaskDialog
+            properties={properties}
+            units={units}
+            task={editValues}
+            trigger={
+              <Button variant="outline" size="sm">
+                <Pencil className="size-4" />
+                Bearbeiten
+              </Button>
+            }
+          />
+          {task.done ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onReopen}
+              disabled={pending}
+            >
+              <RotateCcw className="size-4" />
+              Wieder öffnen
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={onComplete}
+              disabled={pending}
+              className="bg-success-600 text-white hover:bg-success-700"
+            >
+              <Check className="size-4" />
+              Erledigt
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

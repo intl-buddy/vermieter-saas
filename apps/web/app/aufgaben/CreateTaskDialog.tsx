@@ -4,7 +4,11 @@ import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
-import { createAdHocTask, type TaskFormState } from "./actions";
+import {
+  createAdHocTask,
+  updateTask,
+  type TaskFormState,
+} from "./actions";
 import { ScopeFields, type PropertyOption, type UnitOption } from "./ScopeFields";
 import {
   Dialog,
@@ -21,6 +25,16 @@ import { Textarea } from "@/components/ui/textarea";
 
 const initialState: TaskFormState = {};
 
+/** Werte einer bestehenden Aufgabe – zum Vorbefüllen des Bearbeiten-Dialogs. */
+export type EditTaskValues = {
+  id: string;
+  title: string;
+  description: string | null;
+  dueDate: string;
+  propertyId: string | null;
+  unitId: string | null;
+};
+
 /** Heutiges Datum als `YYYY-MM-DD` in lokaler Zeit. */
 function todayIso(): string {
   const now = new Date();
@@ -28,11 +42,11 @@ function todayIso(): string {
   return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 10);
 }
 
-function SubmitButton() {
+function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending}>
-      {pending ? "Wird gespeichert …" : "Aufgabe anlegen"}
+      {pending ? pendingLabel : label}
     </Button>
   );
 }
@@ -41,13 +55,20 @@ export function CreateTaskDialog({
   properties,
   units,
   trigger,
+  task,
 }: {
   properties: PropertyOption[];
   units: UnitOption[];
   trigger?: React.ReactNode;
+  /** Gesetzt → Bearbeiten-Modus (auch für generierte Aufgaben). */
+  task?: EditTaskValues;
 }) {
+  const isEdit = Boolean(task);
   const [open, setOpen] = useState(false);
-  const [state, formAction] = useActionState(createAdHocTask, initialState);
+  const [state, formAction] = useActionState(
+    isEdit ? updateTask : createAdHocTask,
+    initialState,
+  );
 
   useEffect(() => {
     if (state.error) toast.error(state.error);
@@ -69,16 +90,28 @@ export function CreateTaskDialog({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Neue Aufgabe</DialogTitle>
+          <DialogTitle>{isEdit ? "Aufgabe bearbeiten" : "Neue Aufgabe"}</DialogTitle>
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-4">
+          {isEdit ? <input type="hidden" name="id" value={task!.id} /> : null}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="task-title">Titel</Label>
-            <Input id="task-title" name="title" required autoFocus />
+            <Input
+              id="task-title"
+              name="title"
+              required
+              autoFocus
+              defaultValue={task?.title ?? ""}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="task-description">Beschreibung (optional)</Label>
-            <Textarea id="task-description" name="description" rows={2} />
+            <Textarea
+              id="task-description"
+              name="description"
+              rows={2}
+              defaultValue={task?.description ?? ""}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="task-due">Fälligkeitsdatum</Label>
@@ -87,12 +120,20 @@ export function CreateTaskDialog({
               name="due_date"
               type="date"
               required
-              defaultValue={todayIso()}
+              defaultValue={task?.dueDate ?? todayIso()}
             />
           </div>
-          <ScopeFields properties={properties} units={units} />
+          <ScopeFields
+            properties={properties}
+            units={units}
+            defaultPropertyId={task?.propertyId ?? null}
+            defaultUnitId={task?.unitId ?? null}
+          />
           <DialogFooter>
-            <SubmitButton />
+            <SubmitButton
+              label={isEdit ? "Speichern" : "Aufgabe anlegen"}
+              pendingLabel="Wird gespeichert …"
+            />
           </DialogFooter>
         </form>
       </DialogContent>

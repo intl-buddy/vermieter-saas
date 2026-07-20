@@ -16,6 +16,7 @@ import {
 import {
   loadWizardData,
   finalizeBilling,
+  uploadMessdienstPdf,
   type WizardData,
   type PersonPeriod,
 } from "../actions";
@@ -71,6 +72,10 @@ export function Wizard({
   const [data, setData] = useState<WizardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [heating, setHeating] = useState<Record<string, string>>({});
+  // Hochgeladene Messdienst-Einzelabrechnungen je Mietverhältnis (Storage-Pfad).
+  const [messdienstPdf, setMessdienstPdf] = useState<Record<string, string>>(
+    {},
+  );
   const [personPeriods, setPersonPeriods] = useState<
     Record<string, PersonPeriod[]>
   >({});
@@ -97,6 +102,7 @@ export function Wizard({
     }
     setData(res);
     setHeating(Object.fromEntries(res.tenancies.map((t) => [t.tenant_id, "0"])));
+    setMessdienstPdf({});
     setPersonPeriods(res.personPeriods);
     setPrepayOp(
       Object.fromEntries(
@@ -173,6 +179,7 @@ export function Wizard({
           amount: r.amount,
           is_apportionable: r.is_apportionable,
           unit_id: r.unit_id,
+          tenant_id: r.tenant_id,
           labor_cost_35a: r.labor_cost_35a,
           type_35a: r.type_35a as Type35a,
         })),
@@ -215,6 +222,7 @@ export function Wizard({
       prepaymentsOperating: prepayOpNumbers,
       prepaymentsHeating: prepayHeatNumbers,
       prepaymentsSource,
+      messdienstPdf,
     });
     if (res.error || !res.runId) {
       toast.error(res.error ?? "Erstellung fehlgeschlagen.");
@@ -295,6 +303,8 @@ export function Wizard({
               data={data}
               heating={heating}
               setHeating={setHeating}
+              messdienstPdf={messdienstPdf}
+              setMessdienstPdf={setMessdienstPdf}
             />
           ) : null}
           {step === 4 ? (
@@ -468,6 +478,18 @@ function StepBelege({
   );
   const year = data.periodStart.slice(0, 4);
   const propertyOptions = [{ id: data.property.id, name: data.property.name }];
+  const unitOptions = data.units.map((u) => ({
+    id: u.id,
+    label: u.label,
+    property_id: data.property.id,
+  }));
+  const tenantOptions = data.tenancies.map((t) => ({
+    id: t.tenant_id,
+    label: `${t.first_name} ${t.last_name}`.trim(),
+    property_id: data.property.id,
+    unit_id: t.unit_id,
+    active: t.move_out === null,
+  }));
 
   function openForCostType(key: string) {
     setSelectedCt(key);
@@ -487,7 +509,11 @@ function StepBelege({
             <div className="flex gap-2">
               <CreateRecordDialog
                 properties={propertyOptions}
+                units={unitOptions}
+                tenants={tenantOptions}
                 defaultPropertyId={objektId}
+                defaultPeriodStart={data.periodStart}
+                defaultPeriodEnd={data.periodEnd}
                 onCreated={onRecordsChanged}
               />
               <Button asChild variant="outline">
@@ -508,7 +534,9 @@ function StepBelege({
                   <div className="flex flex-col gap-1.5">
                     {recs.map((r) => {
                       const directNoUnit =
-                        r.allocation_key === "direct" && !r.unit_id;
+                        r.allocation_key === "direct" &&
+                        !r.unit_id &&
+                        !r.tenant_id;
                       return (
                         <div
                           key={r.id}
@@ -619,7 +647,11 @@ function StepBelege({
       <CreateRecordDialog
         key={selectedCt ?? "none"}
         properties={propertyOptions}
+        units={unitOptions}
+        tenants={tenantOptions}
         defaultPropertyId={objektId}
+        defaultPeriodStart={data.periodStart}
+        defaultPeriodEnd={data.periodEnd}
         defaultCostType={selectedCt}
         onCreated={onRecordsChanged}
         open={ctOpen}
@@ -636,47 +668,133 @@ function StepHeizkosten({
   data,
   heating,
   setHeating,
+  messdienstPdf,
+  setMessdienstPdf,
 }: {
   data: WizardData;
   heating: Record<string, string>;
   setHeating: (v: Record<string, string>) => void;
+  messdienstPdf: Record<string, string>;
+  setMessdienstPdf: (
+    updater: (prev: Record<string, string>) => Record<string, string>,
+  ) => void;
 }) {
+  const [uploading, setUploading] = useState<Record<string, boolean>>({});
+  const [fileNames, setFileNames] = useState<Record<string, string>>({});
+
+  async function onFileChange(tenantId: string, file: File | undefined) {
+    if (!file) return;
+    setUploading((s) => ({ ...s, [tenantId]: true }));
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("tenant_id", tenantId);
+    const res = await uploadMessdienstPdf(fd);
+    setUploading((s) => ({ ...s, [tenantId]: false }));
+    if (res.error || !res.path) {
+      toast.error(res.error ?? "Upload fehlgeschlagen.");
+      return;
+    }
+    setFileNames((s) => ({ ...s, [tenantId]: file.name }));
+    setMessdienstPdf((prev) => ({ ...prev, [tenantId]: res.path as string }));
+    toast.success("Einzelabrechnung angehängt.");
+  }
+
+  function onRemove(tenantId: string) {
+    setFileNames((s) => {
+      const next = { ...s };
+      delete next[tenantId];
+      return next;
+    });
+    setMessdienstPdf((prev) => {
+      const next = { ...prev };
+      delete next[tenantId];
+      return next;
+    });
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border border-secondary-100 bg-secondary-50 px-4 py-3 text-sm text-secondary-800">
         Werte aus der Abrechnung Ihres Messdienstleisters (z. B. ista/Techem)
         gemäß Heizkostenverordnung. 0 € ist erlaubt.
       </div>
-      {data.tenancies.map((t) => (
-        <Card key={t.tenant_id}>
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div>
-              <div className="font-medium">
-                {t.first_name} {t.last_name}
+      {data.tenancies.map((t) => {
+        const uploaded = Boolean(messdienstPdf[t.tenant_id]);
+        return (
+          <Card key={t.tenant_id}>
+            <CardContent className="flex flex-col gap-3 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="font-medium">
+                    {t.first_name} {t.last_name}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Einheit {t.unit_label}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor={`heat-${t.tenant_id}`} className="text-sm">
+                    Heizkosten (€)
+                  </Label>
+                  <Input
+                    id={`heat-${t.tenant_id}`}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-32"
+                    value={heating[t.tenant_id] ?? "0"}
+                    onChange={(e) =>
+                      setHeating({ ...heating, [t.tenant_id]: e.target.value })
+                    }
+                  />
+                </div>
               </div>
-              <div className="text-sm text-muted-foreground">
-                Einheit {t.unit_label}
+
+              {/* Optionaler PDF-Upload der Messdienst-Einzelabrechnung */}
+              <div className="flex flex-col gap-1.5 border-t border-neutral-100 pt-3">
+                <Label
+                  htmlFor={`md-${t.tenant_id}`}
+                  className="text-sm text-muted-foreground"
+                >
+                  Einzelabrechnung des Messdienstleisters (z. B. Techem, ista) –
+                  optional (PDF)
+                </Label>
+                {uploaded ? (
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <Badge variant="success">Angehängt</Badge>
+                    <span className="text-muted-foreground">
+                      {fileNames[t.tenant_id] ?? "Datei hochgeladen"}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onRemove(t.tenant_id)}
+                    >
+                      Entfernen
+                    </Button>
+                  </div>
+                ) : (
+                  <input
+                    id={`md-${t.tenant_id}`}
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    disabled={uploading[t.tenant_id]}
+                    onChange={(e) =>
+                      onFileChange(t.tenant_id, e.target.files?.[0])
+                    }
+                    className="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-neutral-700 hover:file:bg-neutral-200"
+                  />
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {uploading[t.tenant_id]
+                    ? "Wird hochgeladen …"
+                    : "Wird der Abrechnung als Anlage beigefügt."}
+                </p>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor={`heat-${t.tenant_id}`} className="text-sm">
-                Heizkosten (€)
-              </Label>
-              <Input
-                id={`heat-${t.tenant_id}`}
-                type="number"
-                min="0"
-                step="0.01"
-                className="w-32"
-                value={heating[t.tenant_id] ?? "0"}
-                onChange={(e) =>
-                  setHeating({ ...heating, [t.tenant_id]: e.target.value })
-                }
-              />
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }

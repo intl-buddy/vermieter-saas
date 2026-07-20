@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Receipt, CheckCircle2 } from "lucide-react";
+import { Receipt, CheckCircle2, Info } from "lucide-react";
 import {
   buildMonthlySeries,
   monthsWithData,
@@ -182,15 +182,21 @@ export async function StatsSection() {
             </div>
             {costInputs.length === 0 ? (
               <div className="flex flex-col items-start gap-3 py-4">
-                <p className="text-sm text-muted-foreground">
-                  Noch keine Belege in diesem Jahr erfasst.
-                </p>
+                <div className="flex items-start gap-2 rounded-lg border border-primary-100 bg-primary-50 px-3 py-2 text-sm text-primary-800">
+                  <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  <p>
+                    Hier erscheinen Belege mit Zahlungsdatum im Jahr{" "}
+                    {now.getFullYear()}. Falls du bereits Belege erfasst hast,
+                    fehlt dort vermutlich das Zahlungsdatum – trag es nach, dann
+                    tauchen sie hier und im EÜR-Export auf.
+                  </p>
+                </div>
                 <Link
                   href="/belege"
                   className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-600"
                 >
                   <Receipt className="size-4" />
-                  Ersten Beleg erfassen
+                  Zu den Belegen
                 </Link>
               </div>
             ) : (

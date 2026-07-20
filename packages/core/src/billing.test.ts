@@ -166,6 +166,39 @@ describe("calculateBilling – Verteilung", () => {
     expect(res.owner.total_share).toBe(0);
   });
 
+  it("Direktzuordnung an ein Mietverhältnis: 100 %, unabhängig von Miettagen", () => {
+    const res = calculateBilling(
+      baseInput({
+        tenancies: [
+          tenancy({ tenant_id: "T1", move_in: "2025-01-01", move_out: "2025-01-05" }),
+          tenancy({ tenant_id: "T2", move_in: "2025-01-06", move_out: null }),
+        ],
+        // Direktzuordnung an T2 – obwohl T2 nur die Hälfte des Zeitraums bewohnt.
+        records: [
+          record({ allocation_key: "direct", tenant_id: "T2", amount: 100 }),
+        ],
+      }),
+    );
+    const t1 = res.statements.find((s) => s.tenant_id === "T1")!;
+    const t2 = res.statements.find((s) => s.tenant_id === "T2")!;
+    expect(t2.total_share).toBe(100);
+    expect(t1.total_share).toBe(0);
+    expect(res.owner.total_share).toBe(0);
+  });
+
+  it("Direktzuordnung an ein Mietverhältnis außerhalb des Zeitraums → Eigentümer", () => {
+    const res = calculateBilling(
+      baseInput({
+        tenancies: [tenancy({ tenant_id: "T1" })],
+        records: [
+          record({ allocation_key: "direct", tenant_id: "TX", amount: 100 }),
+        ],
+      }),
+    );
+    expect(res.owner.total_share).toBe(100);
+    expect(res.statements.find((s) => s.tenant_id === "T1")!.total_share).toBe(0);
+  });
+
   it("Schlüssel persons ohne Perioden", () => {
     const res = calculateBilling(
       baseInput({

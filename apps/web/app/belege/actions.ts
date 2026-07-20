@@ -13,7 +13,12 @@ type AllocationKey = Database["public"]["Enums"]["allocation_key"];
 type RecordInsert = Database["public"]["Tables"]["operating_costs_records"]["Insert"];
 
 const COST_TYPES = Object.keys(COST_TYPE_LABELS) as CostType[];
-const ALLOCATION_KEYS = ALLOCATION_OPTIONS.map((o) => o.value);
+// „direct" ist im Dropdown nicht enthalten (ALLOCATION_OPTIONS), wird aber über
+// die Untervarianten (Einheit / Mietverhältnis) gültig übermittelt.
+const ALLOCATION_KEYS = [
+  ...ALLOCATION_OPTIONS.map((o) => o.value),
+  "direct" as AllocationKey,
+];
 const VAT_RATES = [0, 7, 19];
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -46,6 +51,8 @@ function readRecordFields(
   const vatRaw = String(formData.get("vat_rate") ?? "").trim();
   const amountRaw = String(formData.get("amount") ?? "").trim();
   const allocationRaw = String(formData.get("allocation_key") ?? "").trim();
+  const unitIdRaw = String(formData.get("unit_id") ?? "").trim();
+  const tenantIdRaw = String(formData.get("tenant_id") ?? "").trim();
   const periodStart = String(formData.get("billing_period_start") ?? "").trim();
   const periodEnd = String(formData.get("billing_period_end") ?? "").trim();
   const isApportionable =
@@ -85,9 +92,27 @@ function readRecordFields(
     ? (allocationRaw as AllocationKey)
     : "living_area";
 
+  // Direktzuordnung: entweder an eine Einheit ODER an ein Mietverhältnis.
+  let unitId: string | null = null;
+  let tenantId: string | null = null;
+  if (allocationKey === "direct") {
+    if (tenantIdRaw) {
+      tenantId = tenantIdRaw;
+    } else if (unitIdRaw) {
+      unitId = unitIdRaw;
+    } else {
+      return {
+        error:
+          "Bitte für die Direktzuordnung eine Einheit oder ein Mietverhältnis wählen.",
+      };
+    }
+  }
+
   return {
     data: {
       property_id: propertyId,
+      unit_id: unitId,
+      tenant_id: tenantId,
       cost_type: costTypeRaw as CostType,
       allocation_key: allocationKey,
       billing_period_start: periodStart,

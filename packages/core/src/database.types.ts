@@ -77,6 +77,7 @@ export type Database = {
           labor_35a_craftsman: number
           labor_35a_household: number
           line_items: Json
+          messdienst_pdf_url: string | null
           occupancy_days: number | null
           occupancy_end: string | null
           occupancy_start: string | null
@@ -101,6 +102,7 @@ export type Database = {
           labor_35a_craftsman?: number
           labor_35a_household?: number
           line_items: Json
+          messdienst_pdf_url?: string | null
           occupancy_days?: number | null
           occupancy_end?: string | null
           occupancy_start?: string | null
@@ -125,6 +127,7 @@ export type Database = {
           labor_35a_craftsman?: number
           labor_35a_household?: number
           line_items?: Json
+          messdienst_pdf_url?: string | null
           occupancy_days?: number | null
           occupancy_end?: string | null
           occupancy_start?: string | null
@@ -431,6 +434,7 @@ export type Database = {
           paid_date: string | null
           property_id: string
           receipt_url: string | null
+          tenant_id: string | null
           type_35a: Database["public"]["Enums"]["category_35a"] | null
           unit_id: string | null
           updated_at: string
@@ -455,6 +459,7 @@ export type Database = {
           paid_date?: string | null
           property_id: string
           receipt_url?: string | null
+          tenant_id?: string | null
           type_35a?: Database["public"]["Enums"]["category_35a"] | null
           unit_id?: string | null
           updated_at?: string
@@ -479,6 +484,7 @@ export type Database = {
           paid_date?: string | null
           property_id?: string
           receipt_url?: string | null
+          tenant_id?: string | null
           type_35a?: Database["public"]["Enums"]["category_35a"] | null
           unit_id?: string | null
           updated_at?: string
@@ -491,6 +497,12 @@ export type Database = {
             foreignKeyName: "operating_costs_records_property_id_fkey"
             columns: ["property_id"]
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operating_costs_records_tenant_id_fkey"
+            columns: ["tenant_id"]
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
           {

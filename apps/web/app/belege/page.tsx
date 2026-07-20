@@ -1,23 +1,19 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { FileText } from "lucide-react";
 import type { Database } from "@repo/core";
 import { createClient } from "@/lib/supabase/server";
-import { formatCurrency, formatDate } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { CreateRecordDialog, type RecordValues } from "./CreateRecordDialog";
-import { RecordRowActions } from "./RecordRowActions";
+import { RecordRow } from "./RecordRow";
 import { EuerExport } from "./EuerExport";
 import { COST_TYPE_LABELS, COST_TYPE_OPTIONS } from "./labels";
 
@@ -46,11 +42,36 @@ export default async function BelegePage({
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
-  const { data: properties } = await supabase
-    .from("properties")
-    .select("id, name")
-    .order("name");
+  const [{ data: properties }, { data: unitsData }, { data: tenantsData }] =
+    await Promise.all([
+      supabase.from("properties").select("id, name").order("name"),
+      supabase
+        .from("units")
+        .select("id, label, property_id")
+        .order("label"),
+      supabase
+        .from("tenants")
+        .select("id, first_name, last_name, unit_id, move_out_date, units(property_id)")
+        .order("last_name"),
+    ]);
   const propertyIds = new Set((properties ?? []).map((p) => p.id));
+
+  const unitOptions = (unitsData ?? []).map((u) => ({
+    id: u.id,
+    label: u.label,
+    property_id: u.property_id,
+  }));
+  const tenantOptions = (tenantsData ?? []).map((t) => {
+    const unit = t.units as { property_id: string } | null;
+    const name = [t.first_name, t.last_name].filter(Boolean).join(" ").trim();
+    return {
+      id: t.id,
+      label: name || "Unbenanntes Mietverhältnis",
+      property_id: unit?.property_id ?? null,
+      unit_id: t.unit_id,
+      active: t.move_out_date === null,
+    };
+  });
 
   // Filter validieren
   const objekt =
@@ -65,7 +86,7 @@ export default async function BelegePage({
   let query = supabase
     .from("operating_costs_records")
     .select(
-      "id, invoice_date, invoice_number, paid_date, cost_type, vendor, amount, gross_amount, vat_rate, allocation_key, billing_period_start, billing_period_end, is_apportionable, receipt_url, notes, property_id, properties(name, street, house_number, zip, city)",
+      "id, invoice_date, invoice_number, paid_date, cost_type, vendor, amount, gross_amount, vat_rate, allocation_key, billing_period_start, billing_period_end, is_apportionable, receipt_url, notes, property_id, unit_id, tenant_id, properties(name, street, house_number, zip, city)",
     );
   if (objekt) query = query.eq("property_id", objekt);
   if (kostenart) query = query.eq("cost_type", kostenart);
@@ -110,6 +131,8 @@ export default async function BelegePage({
           <EuerExport currentYear={currentYear} missingCount={missingCount ?? 0} />
           <CreateRecordDialog
             properties={properties ?? []}
+            units={unitOptions}
+            tenants={tenantOptions}
             defaultPropertyId={objekt || undefined}
           />
         </div>
@@ -183,6 +206,8 @@ export default async function BelegePage({
             </p>
             <CreateRecordDialog
               properties={properties ?? []}
+              units={unitOptions}
+              tenants={tenantOptions}
               defaultPropertyId={objekt || undefined}
             />
           </CardContent>
@@ -215,10 +240,11 @@ export default async function BelegePage({
                 const fullAddress = property
                   ? `${property.name} · ${property.street} ${property.house_number}, ${property.zip} ${property.city}`
                   : "";
-                const url = downloadUrls.get(r.id);
                 const values: RecordValues = {
                   id: r.id,
                   property_id: r.property_id,
+                  unit_id: r.unit_id,
+                  tenant_id: r.tenant_id,
                   cost_type: r.cost_type,
                   vendor: r.vendor,
                   invoice_number: r.invoice_number,
@@ -235,68 +261,16 @@ export default async function BelegePage({
                   notes: r.notes,
                 };
                 return (
-                  <TableRow key={r.id} className="group">
-                    <TableCell className="whitespace-nowrap">
-                      {formatDate(r.invoice_date)}
-                    </TableCell>
-                    <TableCell>{COST_TYPE_LABELS[r.cost_type]}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <span
-                        className="block max-w-[180px] truncate"
-                        title={fullAddress}
-                      >
-                        {property?.name ?? "–"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <span
-                        className="block max-w-[160px] truncate"
-                        title={r.vendor ?? undefined}
-                      >
-                        {r.vendor || "–"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatCurrency(r.gross_amount ?? r.amount)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {r.paid_date ? (
-                        <span className="tabular-nums">
-                          {r.paid_date.slice(0, 4)}
-                        </span>
-                      ) : (
-                        <Badge variant="warning">Zahlungsdatum fehlt</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {r.is_apportionable ? (
-                        <Badge variant="success">umlagefähig</Badge>
-                      ) : (
-                        <Badge variant="neutral">nicht umlagefähig</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {url ? (
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-secondary hover:underline"
-                          aria-label="Beleg herunterladen"
-                        >
-                          <FileText className="size-4" />
-                        </a>
-                      ) : (
-                        <span className="text-neutral-300">–</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="sticky right-0 z-10 border-l border-neutral-100 bg-white text-right group-hover:bg-neutral-50">
-                      <RecordRowActions
-                        record={values}
-                        properties={properties ?? []}
-                      />
-                    </TableCell>
-                  </TableRow>
+                  <RecordRow
+                    key={r.id}
+                    record={values}
+                    properties={properties ?? []}
+                    units={unitOptions}
+                    tenants={tenantOptions}
+                    propertyName={property?.name ?? null}
+                    fullAddress={fullAddress}
+                    downloadUrl={downloadUrls.get(r.id) ?? null}
+                  />
                 );
               })}
             </TableBody>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download } from "lucide-react";
+import { Download, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const SELECT_CLS =
@@ -50,6 +50,14 @@ export function EuerExport({
           Export enthalten.
         </p>
       ) : null}
+      <div className="mt-1 flex max-w-md items-start gap-2 rounded-lg border border-primary-100 bg-primary-50 px-3 py-2 text-xs text-primary-800">
+        <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+        <p>
+          Der EÜR-Export ist die Grundlage für deine Steuererklärung – gib ihn
+          einfach an deinen Steuerberater weiter oder nutze ihn für die Anlage
+          V/EÜR des laufenden Jahres.
+        </p>
+      </div>
     </div>
   );
 }

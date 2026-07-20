@@ -30,10 +30,20 @@ const SELECT_CLS =
   "flex h-11 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1";
 
 export type PropertyOption = { id: string; name: string };
+export type UnitOption = { id: string; label: string; property_id: string };
+export type TenantOption = {
+  id: string;
+  label: string;
+  property_id: string | null;
+  unit_id: string;
+  active: boolean;
+};
 
 export type RecordValues = {
   id: string;
   property_id: string;
+  unit_id: string | null;
+  tenant_id: string | null;
   cost_type: string;
   vendor: string | null;
   invoice_number: string | null;
@@ -49,6 +59,14 @@ export type RecordValues = {
   receipt_url: string | null;
   notes: string | null;
 };
+
+/** UI-Auswahl beim Umlageschlüssel „direkt": Einheit oder Mietverhältnis. */
+function initialAllocChoice(record?: RecordValues): string {
+  if (record?.allocation_key === "direct") {
+    return record.tenant_id ? "direct_tenant" : "direct_unit";
+  }
+  return record?.allocation_key ?? "living_area";
+}
 
 function Field({
   label,
@@ -78,7 +96,11 @@ function SubmitButton({ label }: { label: string }) {
 
 export function CreateRecordDialog({
   properties,
+  units = [],
+  tenants = [],
   defaultPropertyId,
+  defaultPeriodStart,
+  defaultPeriodEnd,
   trigger,
   mode = "create",
   record,
@@ -88,7 +110,12 @@ export function CreateRecordDialog({
   onOpenChange,
 }: {
   properties: PropertyOption[];
+  units?: UnitOption[];
+  tenants?: TenantOption[];
   defaultPropertyId?: string;
+  /** Vorbefüllung des Abrechnungszeitraums (z. B. aus dem NK-Wizard). */
+  defaultPeriodStart?: string;
+  defaultPeriodEnd?: string;
   trigger?: React.ReactNode;
   mode?: "create" | "edit";
   record?: RecordValues;
@@ -100,6 +127,16 @@ export function CreateRecordDialog({
   const year = new Date().getFullYear();
   const action = mode === "edit" ? updateRecord : createRecord;
   const [state, formAction] = useActionState(action, initialState);
+
+  const [propertyId, setPropertyId] = useState(
+    record?.property_id ?? defaultPropertyId ?? "",
+  );
+  const [alloc, setAlloc] = useState(initialAllocChoice(record));
+  const unitsForProperty = units.filter((u) => u.property_id === propertyId);
+  const tenantsForProperty = tenants.filter(
+    (t) => t.property_id === propertyId,
+  );
+  const allocKeyValue = alloc.startsWith("direct") ? "direct" : alloc;
 
   const isControlled = openProp !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
@@ -163,7 +200,8 @@ export function CreateRecordDialog({
                 id={`${uid}-property`}
                 name="property_id"
                 required
-                defaultValue={record?.property_id ?? defaultPropertyId ?? ""}
+                value={propertyId}
+                onChange={(e) => setPropertyId(e.target.value)}
                 className={SELECT_CLS}
               >
                 <option value="" disabled>
@@ -284,10 +322,13 @@ export function CreateRecordDialog({
             </Field>
 
             <Field label="Umlageschlüssel" htmlFor={`${uid}-alloc`}>
+              {/* Sichtbare Auswahl (inkl. Direkt-Untervarianten) – der reale
+                  allocation_key wird als hidden Feld übermittelt. */}
+              <input type="hidden" name="allocation_key" value={allocKeyValue} />
               <select
                 id={`${uid}-alloc`}
-                name="allocation_key"
-                defaultValue={record?.allocation_key ?? "living_area"}
+                value={alloc}
+                onChange={(e) => setAlloc(e.target.value)}
                 className={SELECT_CLS}
               >
                 {ALLOCATION_OPTIONS.map((o) => (
@@ -295,8 +336,57 @@ export function CreateRecordDialog({
                     {o.label}
                   </option>
                 ))}
+                <option value="direct_unit">Direktzuordnung (Einheit)</option>
+                <option value="direct_tenant">
+                  Direktzuordnung (Mietverhältnis)
+                </option>
               </select>
             </Field>
+
+            {alloc === "direct_unit" ? (
+              <Field label="Einheit" htmlFor={`${uid}-unit`}>
+                <select
+                  key={`unit-${propertyId}`}
+                  id={`${uid}-unit`}
+                  name="unit_id"
+                  required
+                  defaultValue={record?.unit_id ?? ""}
+                  className={SELECT_CLS}
+                >
+                  <option value="" disabled>
+                    — Einheit wählen —
+                  </option>
+                  {unitsForProperty.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            ) : null}
+
+            {alloc === "direct_tenant" ? (
+              <Field label="Mietverhältnis" htmlFor={`${uid}-tenant`}>
+                <select
+                  key={`tenant-${propertyId}`}
+                  id={`${uid}-tenant`}
+                  name="tenant_id"
+                  required
+                  defaultValue={record?.tenant_id ?? ""}
+                  className={SELECT_CLS}
+                >
+                  <option value="" disabled>
+                    — Mietverhältnis wählen —
+                  </option>
+                  {tenantsForProperty.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                      {t.active ? "" : " (beendet)"}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            ) : null}
 
             <Field label="Abrechnung von" htmlFor={`${uid}-start`}>
               <Input
@@ -304,7 +394,11 @@ export function CreateRecordDialog({
                 name="billing_period_start"
                 type="date"
                 required
-                defaultValue={record?.billing_period_start ?? `${year}-01-01`}
+                defaultValue={
+                  record?.billing_period_start ??
+                  defaultPeriodStart ??
+                  `${year}-01-01`
+                }
               />
             </Field>
 
@@ -314,10 +408,21 @@ export function CreateRecordDialog({
                 name="billing_period_end"
                 type="date"
                 required
-                defaultValue={record?.billing_period_end ?? `${year}-12-31`}
+                defaultValue={
+                  record?.billing_period_end ??
+                  defaultPeriodEnd ??
+                  `${year}-12-31`
+                }
               />
             </Field>
           </div>
+
+          {alloc === "direct_tenant" ? (
+            <p className="-mt-1 text-xs text-muted-foreground">
+              Die Kosten werden zu 100 % dem gewählten Mietverhältnis zugeordnet
+              (unabhängig von den Miettagen).
+            </p>
+          ) : null}
 
           <div className="flex items-center justify-between rounded-lg border border-neutral-200 px-3 py-2">
             <span className="text-sm font-medium text-neutral-700">

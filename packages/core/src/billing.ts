@@ -44,6 +44,13 @@ export interface CostRecordInput {
   amount: number;
   is_apportionable: boolean;
   unit_id: string | null;
+  /**
+   * Bei `allocation_key === "direct"` und gesetztem `tenant_id`: der Beleg wird
+   * zu 100 % diesem Mietverhältnis zugeordnet – unabhängig von den Miettagen.
+   * Ist `tenant_id` null, greift die Direktzuordnung auf `unit_id` (anteilig
+   * nach Miettagen, falls die Einheit im Zeitraum den Mieter wechselte).
+   */
+  tenant_id?: string | null;
   labor_cost_35a: number;
   type_35a: Type35a;
 }
@@ -332,8 +339,29 @@ export function calculateBilling(input: BillingInput): BillingResult {
     let denom: number;
 
     if (rec.allocation_key === "direct") {
-      if (!rec.unit_id) {
-        // Direktzuordnung ohne Einheit → Eigentümer
+      if (rec.tenant_id) {
+        // Direktzuordnung an ein Mietverhältnis → 100 %, unabhängig von Miettagen.
+        const o = occ.find((x) => x.tenant_id === rec.tenant_id);
+        if (!o) {
+          // Mietverhältnis nicht im Abrechnungszeitraum → Eigentümer.
+          owner.positions.push({
+            record_id: rec.id,
+            cost_type: rec.cost_type,
+            share: roundCent(rec.amount),
+            reason: "vacancy",
+          });
+          addLabor(owner, rec.type_35a, roundCent(rec.labor_cost_35a));
+          continue;
+        }
+        participants = [{ o, basis: 1 }];
+        denom = 1;
+      } else if (rec.unit_id) {
+        participants = occ
+          .filter((o) => o.unit_id === rec.unit_id)
+          .map((o) => ({ o, basis: o.occDays }));
+        denom = periodDays;
+      } else {
+        // Direktzuordnung ohne Einheit/Mietverhältnis → Eigentümer
         owner.positions.push({
           record_id: rec.id,
           cost_type: rec.cost_type,
@@ -343,10 +371,6 @@ export function calculateBilling(input: BillingInput): BillingResult {
         addLabor(owner, rec.type_35a, roundCent(rec.labor_cost_35a));
         continue;
       }
-      participants = occ
-        .filter((o) => o.unit_id === rec.unit_id)
-        .map((o) => ({ o, basis: o.occDays }));
-      denom = periodDays;
     } else {
       participants = occ.map((o) => ({
         o,

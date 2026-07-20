@@ -109,6 +109,8 @@ export default async function AufgabenPage({
         (t.status === "open" && t.due_date < today),
       scopeLabel,
       scopeHref: propId ? `/objekte/${propId}` : null,
+      propertyId: t.property_id ?? null,
+      unitId: t.unit_id ?? null,
     };
   });
 
@@ -176,7 +178,12 @@ export default async function AufgabenPage({
       ) : (
         <div className="flex flex-col gap-3">
           {items.map((task) => (
-            <TaskItem key={task.id} task={task} />
+            <TaskItem
+              key={task.id}
+              task={task}
+              properties={propertyOptions}
+              units={unitOptions}
+            />
           ))}
         </div>
       )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AlertTriangle, Info } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import {
@@ -60,6 +61,16 @@ export function AbmahnungForm({
   const einheitLabel = unit?.label ?? "";
   const subject = `Abmahnung wegen ${variant.grund} – ${objektLabel}, ${einheitLabel}`;
 
+  // Fehlende Pflichtfelder für den Hinweis am „PDF erzeugen"-Button.
+  const missingFields = [
+    !property ? "Objekt" : null,
+    !unit ? "Einheit" : null,
+    !tenant ? "Mieter" : null,
+  ].filter((f): f is string => f !== null);
+
+  // Kontext-Hinweis (Hausordnung) nur bei Verstößen gegen die Hausordnung.
+  const showHausordnungHint = variantKey !== "zahlung";
+
   function onVariantChange(key: AbmahnungVariantKey) {
     setVariantKey(key);
     // Sachverhalt auf den variantenspezifischen Standardtext zurücksetzen.
@@ -91,7 +102,17 @@ export function AbmahnungForm({
 
   return (
     <div className="flex flex-col gap-6">
-      <Card>
+      {/* Rechtsberatungs-Disclaimer */}
+      <div className="flex items-start gap-2.5 rounded-xl border border-warning-200 bg-warning-50 p-4 text-sm text-warning-800">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <p>
+          Diese Vorlage ist eine Formulierungshilfe und ersetzt keine
+          Rechtsberatung. Bei ernsthaften oder wiederholten Verstößen sowie vor
+          einer Kündigung solltest du anwaltlichen Rat einholen.
+        </p>
+      </div>
+
+      <Card className={!recipient ? "ring-1 ring-danger-200" : undefined}>
         <CardContent className="p-6">
           <EntitySelector
             properties={properties}
@@ -128,6 +149,17 @@ export function AbmahnungForm({
                 </label>
               ))}
             </div>
+            {showHausordnungHint ? (
+              <div className="flex items-start gap-2 rounded-lg border border-secondary-100 bg-secondary-50 px-3 py-2 text-xs text-secondary-800">
+                <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                <p>
+                  Eine Abmahnung setzt voraus, dass das beanstandete Verhalten
+                  tatsächlich untersagt ist – z. B. durch den Mietvertrag oder
+                  eine wirksam einbezogene Hausordnung. Prüfe vor dem Versand, ob
+                  eine entsprechende Regelung besteht.
+                </p>
+              </div>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -219,10 +251,18 @@ export function AbmahnungForm({
         </Card>
       </div>
 
-      <div>
-        <Button onClick={onGenerate} disabled={pending || !recipient}>
-          {pending ? "PDF wird erzeugt …" : "PDF erzeugen"}
-        </Button>
+      <div className="flex flex-col gap-2">
+        <div>
+          <Button onClick={onGenerate} disabled={pending || !recipient}>
+            {pending ? "PDF wird erzeugt …" : "PDF erzeugen"}
+          </Button>
+        </div>
+        {missingFields.length > 0 ? (
+          <p className="text-sm text-danger-600">
+            Bitte fülle zuerst alle Pflichtfelder aus – es fehlt noch:{" "}
+            <span className="font-medium">{missingFields.join(", ")}</span>.
+          </p>
+        ) : null}
       </div>
     </div>
   );

@@ -3,12 +3,13 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Receipt, ClipboardList, Euro, Loader2 } from "lucide-react";
+import { Receipt, ClipboardList, Euro, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { PropertyForm } from "@/app/objekte/PropertyForm";
 import { UnitForm } from "@/app/objekte/[id]/UnitForm";
 import { TenantForm } from "@/app/objekte/[id]/TenantForm";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { StepInfo } from "./StepInfo";
@@ -20,6 +21,8 @@ import { completeOnboarding } from "./actions";
 
 const STEPS = ["Absenderdaten", "Objekt", "Einheit", "Mietverhältnis"];
 
+export type OnboardingUnit = { id: string; label: string; hasTenant: boolean };
+
 export type OnboardingProps = {
   step: number;
   firstUnfinished: number;
@@ -27,8 +30,7 @@ export type OnboardingProps = {
   absender: AbsenderValues;
   propertyId: string | null;
   propertyName: string | null;
-  unitId: string | null;
-  unitLabel: string | null;
+  units: OnboardingUnit[];
 };
 
 export function OnboardingClient(props: OnboardingProps) {
@@ -42,6 +44,10 @@ export function OnboardingClient(props: OnboardingProps) {
 
   function goNext() {
     goToStep(props.step + 1);
+  }
+
+  function refresh() {
+    router.refresh();
   }
 
   function finish() {
@@ -82,7 +88,14 @@ export function OnboardingClient(props: OnboardingProps) {
         {props.showSuccess ? (
           <SuccessScreen />
         ) : (
-          <Wizard {...props} goToStep={goToStep} goNext={goNext} finish={finish} completing={completing} />
+          <Wizard
+            {...props}
+            goToStep={goToStep}
+            goNext={goNext}
+            finish={finish}
+            refresh={refresh}
+            completing={completing}
+          />
         )}
       </main>
     </div>
@@ -95,16 +108,17 @@ function Wizard({
   absender,
   propertyId,
   propertyName,
-  unitId,
-  unitLabel,
+  units,
   goToStep,
   goNext,
   finish,
+  refresh,
   completing,
 }: OnboardingProps & {
   goToStep: (n: number) => void;
   goNext: () => void;
   finish: () => void;
+  refresh: () => void;
   completing: boolean;
 }) {
   return (
@@ -159,13 +173,37 @@ function Wizard({
 
       {step === 3 ? (
         propertyId ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Einheit für Objekt <strong>{propertyName}</strong>.
+              Einheit für Objekt <strong>{propertyName}</strong>. Du kannst
+              mehrere Einheiten anlegen.
             </p>
+            {units.length > 0 ? (
+              <div className="rounded-xl border border-neutral-200 bg-white p-4">
+                <div className="mb-2 text-sm font-medium">
+                  Angelegte Einheiten ({units.length})
+                </div>
+                <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
+                  {units.map((u) => (
+                    <li key={u.id} className="flex items-center gap-2">
+                      <Check className="size-4 text-success-600" />
+                      {u.label}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             <PropertyGuardCard>
-              <UnitForm mode="create" propertyId={propertyId} onSuccess={goNext} />
+              <UnitForm
+                mode="create"
+                propertyId={propertyId}
+                onSuccess={refresh}
+              />
             </PropertyGuardCard>
+            <p className="text-xs text-muted-foreground">
+              Lege bei Bedarf weitere Einheiten an – oder klicke auf „Weiter",
+              um Mietverhältnisse zuzuordnen.
+            </p>
           </div>
         ) : (
           <MissingPrerequisite
@@ -176,37 +214,15 @@ function Wizard({
       ) : null}
 
       {step === 4 ? (
-        unitId && propertyId ? (
-          <div className="flex flex-col gap-4">
-            <p className="text-sm text-muted-foreground">
-              Mietverhältnis für Einheit <strong>{unitLabel}</strong>.
-            </p>
-            <PropertyGuardCard>
-              <TenantForm
-                unitId={unitId}
-                propertyId={propertyId}
-                onSuccess={finish}
-              />
-            </PropertyGuardCard>
-            <div className="rounded-xl border border-neutral-200 bg-white p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-sm text-muted-foreground">
-                  Die Einheit steht aktuell leer? Du kannst das Mietverhältnis
-                  später anlegen.
-                </div>
-                <Button variant="outline" onClick={finish} disabled={completing}>
-                  {completing ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      Wird abgeschlossen …
-                    </>
-                  ) : (
-                    "Einheit steht aktuell leer"
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
+        units.length > 0 && propertyId ? (
+          <Step4Tenancies
+            propertyId={propertyId}
+            units={units}
+            refresh={refresh}
+            finish={finish}
+            completing={completing}
+            goToStep={goToStep}
+          />
         ) : (
           <MissingPrerequisite
             text="Bitte lege zuerst eine Einheit an."
@@ -224,16 +240,124 @@ function Wizard({
         ) : (
           <span />
         )}
-        {/* „Weiter" nur, wenn dieser Schritt bereits erledigt ist (Wiedereinstieg) */}
-        {step < firstUnfinished ? (
-          step === 4 ? (
-            <Button onClick={finish} disabled={completing}>
-              Abschließen
-            </Button>
-          ) : (
-            <Button onClick={goNext}>Weiter</Button>
-          )
+        {/* „Weiter" nur, wenn dieser Schritt bereits erledigt ist (Wiedereinstieg).
+            Schritt 4 hat eigene Aktionen (Abschließen / weiteres Objekt). */}
+        {step !== 4 && step < firstUnfinished ? (
+          <Button onClick={goNext}>Weiter</Button>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Schritt 4: je Einheit ein Mietverhältnis anlegen. Zeigt den Status jeder
+ * Einheit („Mieter angelegt ✓" / „leer") und lässt den Nutzer für leere
+ * Einheiten ein Mietverhältnis erfassen. Am Ende: abschließen oder ein weiteres
+ * Objekt anlegen.
+ */
+function Step4Tenancies({
+  propertyId,
+  units,
+  refresh,
+  finish,
+  completing,
+  goToStep,
+}: {
+  propertyId: string;
+  units: OnboardingUnit[];
+  refresh: () => void;
+  finish: () => void;
+  completing: boolean;
+  goToStep: (n: number) => void;
+}) {
+  const emptyUnits = units.filter((u) => !u.hasTenant);
+  const [selectedUnitId, setSelectedUnitId] = useState(
+    emptyUnits[0]?.id ?? "",
+  );
+  // Falls sich die leeren Einheiten nach einem Refresh ändern, gültige Auswahl halten.
+  const selected =
+    emptyUnits.find((u) => u.id === selectedUnitId) ?? emptyUnits[0] ?? null;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground">
+        Ordne jeder Einheit ein Mietverhältnis zu. Leere Einheiten kannst du
+        überspringen.
+      </p>
+
+      {/* Status-Liste der Einheiten */}
+      <div className="rounded-xl border border-neutral-200 bg-white p-4">
+        <div className="mb-2 text-sm font-medium">Einheiten</div>
+        <ul className="flex flex-col gap-1.5 text-sm">
+          {units.map((u) => (
+            <li key={u.id} className="flex items-center justify-between gap-2">
+              <span>{u.label}</span>
+              {u.hasTenant ? (
+                <Badge variant="success">Mieter angelegt ✓</Badge>
+              ) : (
+                <Badge variant="neutral">leer</Badge>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {selected ? (
+        <div className="flex flex-col gap-2">
+          {emptyUnits.length > 1 ? (
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="onboarding-unit-select"
+                className="text-sm font-medium"
+              >
+                Einheit für das Mietverhältnis
+              </label>
+              <select
+                id="onboarding-unit-select"
+                value={selected.id}
+                onChange={(e) => setSelectedUnitId(e.target.value)}
+                className="flex h-11 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {emptyUnits.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+          <PropertyGuardCard>
+            <TenantForm
+              key={selected.id}
+              unitId={selected.id}
+              propertyId={propertyId}
+              onSuccess={refresh}
+            />
+          </PropertyGuardCard>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-success-100 bg-success-50 p-4 text-sm text-success-800">
+          Alle Einheiten haben ein Mietverhältnis. Du kannst die Einrichtung
+          abschließen oder ein weiteres Objekt anlegen.
+        </div>
+      )}
+
+      {/* Abschluss-Aktionen */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white p-4">
+        <Button variant="outline" onClick={() => goToStep(2)}>
+          Weiteres Objekt anlegen
+        </Button>
+        <Button onClick={finish} disabled={completing}>
+          {completing ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Wird abgeschlossen …
+            </>
+          ) : (
+            "Einrichtung abschließen"
+          )}
+        </Button>
       </div>
     </div>
   );
