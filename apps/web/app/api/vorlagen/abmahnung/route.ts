@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   const { data: profile } = await supabase
     .from("users")
     .select(
-      "full_name, company_name, address_street, address_zip, address_city",
+      "full_name, company_name, address_street, address_zip, address_city, pdf_footer_enabled",
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -68,6 +68,7 @@ export async function POST(request: Request) {
     objektLabel: body.objektLabel ?? "",
     einheitLabel: body.einheitLabel ?? "",
     sachverhalt: body.sachverhalt ?? "",
+    footerEnabled: profile?.pdf_footer_enabled ?? true,
   });
 
   return pdfDownloadResponse(

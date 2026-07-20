@@ -8,6 +8,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import { formatDate } from "../format";
+import { PdfFooter } from "./pdfFooter";
 import type { LetterSender } from "./letterShared";
 
 export type HandoverPdfRoom = {
@@ -36,6 +37,7 @@ export type HandoverPdfData = {
   signatureLandlord: string | null;
   signatureTenant: string | null;
   signatureCity: string | null;
+  footerEnabled?: boolean;
 };
 
 const styles = StyleSheet.create({
@@ -322,6 +324,8 @@ function HandoverDocument({ data }: { data: HandoverPdfData }) {
             date={data.date}
           />
         </View>
+
+        <PdfFooter enabled={data.footerEnabled} />
       </Page>
     </Document>
   );

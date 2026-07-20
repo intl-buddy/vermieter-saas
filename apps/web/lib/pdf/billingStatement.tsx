@@ -7,6 +7,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import { formatCurrency, formatDate } from "../format";
+import { PdfFooter } from "./pdfFooter";
 
 export type StatementPositionPdf = {
   costLabel: string;
@@ -65,6 +66,7 @@ export type StatementPdfData = {
   labor35aCraftsman: number;
   payment: { iban: string | null; bankName: string | null; bic: string | null };
   paymentDeadline: string;
+  footerEnabled?: boolean;
 };
 
 const NF2 = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
@@ -459,6 +461,8 @@ function StatementDocument({ data }: { data: StatementPdfData }) {
           Die dieser Abrechnung zugrunde liegenden Belege können nach
           Vereinbarung eingesehen werden (Belegeinsichtsrecht).
         </Text>
+
+        <PdfFooter enabled={data.footerEnabled} />
       </Page>
     </Document>
   );

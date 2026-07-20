@@ -1072,6 +1072,7 @@ export type Database = {
           id: string
           is_admin: boolean
           onboarding_completed: boolean
+          pdf_footer_enabled: boolean
           phone: string | null
           plan: Database["public"]["Enums"]["subscription_plan"]
           price_id: string | null
@@ -1103,6 +1104,7 @@ export type Database = {
           id?: string
           is_admin?: boolean
           onboarding_completed?: boolean
+          pdf_footer_enabled?: boolean
           phone?: string | null
           plan?: Database["public"]["Enums"]["subscription_plan"]
           price_id?: string | null
@@ -1134,6 +1136,7 @@ export type Database = {
           id?: string
           is_admin?: boolean
           onboarding_completed?: boolean
+          pdf_footer_enabled?: boolean
           phone?: string | null
           plan?: Database["public"]["Enums"]["subscription_plan"]
           price_id?: string | null

@@ -37,7 +37,9 @@ export async function POST(request: Request) {
   // Vermieter authentisch aus dem eigenen Profil.
   const { data: profile } = await supabase
     .from("users")
-    .select("full_name, address_street, address_zip, address_city")
+    .select(
+      "full_name, address_street, address_zip, address_city, pdf_footer_enabled",
+    )
     .eq("id", user.id)
     .maybeSingle();
 
@@ -90,6 +92,7 @@ export async function POST(request: Request) {
       hausordnung: Boolean(body.anlagen?.hausordnung),
       lueftung: Boolean(body.anlagen?.lueftung),
     },
+    footerEnabled: profile?.pdf_footer_enabled ?? true,
   };
 
   const pdf = await renderMietvertragPdf(data);

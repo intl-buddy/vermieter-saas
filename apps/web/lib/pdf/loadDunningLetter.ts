@@ -52,7 +52,7 @@ export async function loadDunningLetterData(
   const { data: profile } = await supabase
     .from("users")
     .select(
-      "full_name, company_name, address_street, address_zip, address_city, iban, bank_name, bic",
+      "full_name, company_name, address_street, address_zip, address_city, iban, bank_name, bic, pdf_footer_enabled",
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -102,5 +102,6 @@ export async function loadDunningLetterData(
       bankName: profile?.bank_name ?? null,
       bic: profile?.bic ?? null,
     },
+    footerEnabled: profile?.pdf_footer_enabled ?? true,
   };
 }

@@ -385,7 +385,7 @@ export async function finalizeBilling(
   const { data: profile } = await supabase
     .from("users")
     .select(
-      "full_name, company_name, address_street, address_zip, address_city, iban, bank_name, bic",
+      "full_name, company_name, address_street, address_zip, address_city, iban, bank_name, bic, pdf_footer_enabled",
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -584,6 +584,7 @@ export async function finalizeBilling(
         bic: profile?.bic ?? null,
       },
       paymentDeadline: deadline,
+      footerEnabled: profile?.pdf_footer_enabled ?? true,
     });
 
     // Messdienst-Einzelabrechnung (falls hochgeladen) als Anlage anhängen.

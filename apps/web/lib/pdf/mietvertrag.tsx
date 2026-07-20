@@ -357,6 +357,18 @@ function MietvertragDocument({ data }: { data: MietvertragData }) {
               `Seite ${pageNumber} von ${totalPages}`
             }
           />
+          {(data.footerEnabled ?? true) ? (
+            <Text
+              style={{
+                textAlign: "center",
+                fontSize: 8,
+                color: "#999999",
+                marginTop: 2,
+              }}
+            >
+              Erstellt mit tefter · tefter.de
+            </Text>
+          ) : null}
         </View>
       </Page>
     </Document>

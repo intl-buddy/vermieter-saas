@@ -7,6 +7,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import { formatDate } from "../format";
+import { PdfFooter } from "./pdfFooter";
 import {
   DateLine,
   RecipientBlock,
@@ -29,6 +30,7 @@ export type WohnungsgeberData = {
   einheit: string;
   einzugsdatum: string;
   meldepflichtige: string; // mehrzeilig
+  footerEnabled?: boolean;
 };
 
 const styles = StyleSheet.create({
@@ -138,6 +140,8 @@ function WohnungsgeberDocument({ data }: { data: WohnungsgeberData }) {
         <Text style={styles.signatureLabel}>
           Unterschrift Wohnungsgeber ({sender.fullName})
         </Text>
+
+        <PdfFooter enabled={data.footerEnabled} />
       </Page>
     </Document>
   );

@@ -1,5 +1,6 @@
 import { Document, Page, Text, renderToBuffer } from "@react-pdf/renderer";
 import { formatDate } from "../format";
+import { PdfFooter } from "./pdfFooter";
 import {
   ABMAHNUNG_GESPRAECH,
   ABMAHNUNG_RECHTSFOLGEN,
@@ -23,6 +24,7 @@ export type AbmahnungData = {
   objektLabel: string; // Objektname
   einheitLabel: string; // Einheit
   sachverhalt: string; // Absatz 1 (editierbar)
+  footerEnabled?: boolean;
 };
 
 function AbmahnungDocument({ data }: { data: AbmahnungData }) {
@@ -65,6 +67,8 @@ function AbmahnungDocument({ data }: { data: AbmahnungData }) {
 
         <Text>Mit freundlichen Grüßen</Text>
         <Text style={letterStyles.signatureName}>{sender.fullName}</Text>
+
+        <PdfFooter enabled={data.footerEnabled} />
       </Page>
     </Document>
   );

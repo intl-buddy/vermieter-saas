@@ -88,3 +88,33 @@ export async function updateProfile(
   revalidatePath("/einstellungen");
   return { success: "Profil wurde gespeichert." };
 }
+
+/**
+ * Schaltet die dezente PDF-Fußzeile („Erstellt mit tefter · tefter.de") auf allen
+ * erzeugten Dokumenten an oder aus. Flag `users.pdf_footer_enabled`.
+ */
+export async function setPdfFooterEnabled(
+  enabled: boolean,
+): Promise<ProfileState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Bitte melde dich erneut an." };
+  }
+  const writeError = await assertWriteAccess(supabase, user.id);
+  if (writeError) return { error: writeError };
+
+  const { error } = await supabase
+    .from("users")
+    .update({ pdf_footer_enabled: enabled })
+    .eq("id", user.id);
+
+  if (error) {
+    return { error: `Speichern fehlgeschlagen: ${error.message}` };
+  }
+
+  revalidatePath("/einstellungen");
+  return { success: "Gespeichert." };
+}

@@ -8,6 +8,7 @@ import { EinstellungenForm } from "./EinstellungenForm";
 import { KontoSection } from "./KontoSection";
 import { AboSection } from "./AboSection";
 import { DatenExportSection } from "./DatenExportSection";
+import { DokumenteSection } from "./DokumenteSection";
 
 export const metadata = { title: "Einstellungen · tefter" };
 
@@ -24,7 +25,7 @@ export default async function EinstellungenPage() {
     supabase
       .from("users")
       .select(
-        "full_name, company_name, address_street, address_zip, address_city, phone, iban, bank_name, bic, dunning_fee, dunning_deadline_days, plan, subscription_status, subscription_id, trial_ends_at, current_period_end, cancel_at_period_end, access_until",
+        "full_name, company_name, address_street, address_zip, address_city, phone, iban, bank_name, bic, dunning_fee, dunning_deadline_days, plan, subscription_status, subscription_id, trial_ends_at, current_period_end, cancel_at_period_end, access_until, pdf_footer_enabled",
       )
       .eq("id", user.id)
       .maybeSingle(),
@@ -97,6 +98,16 @@ export default async function EinstellungenPage() {
           E-Mail-Adresse und Passwort ändern.
         </p>
         <KontoSection userEmail={user.email ?? ""} />
+      </div>
+
+      <div className="mt-10">
+        <h2 className="text-xl font-bold tracking-tight">Dokumente</h2>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">
+          Aussehen deiner erzeugten PDF-Dokumente.
+        </p>
+        <DokumenteSection
+          footerEnabled={profile?.pdf_footer_enabled ?? true}
+        />
       </div>
 
       <div className="mt-10">

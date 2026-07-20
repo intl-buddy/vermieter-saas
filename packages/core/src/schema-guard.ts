@@ -357,6 +357,13 @@ export const EXPECTED_COLUMNS: ExpectedColumn[] = [
     column: "messdienst_pdf_url",
     since: "021_messdienst_pdf.sql",
   },
+
+  // --- 022: PDF-Fußzeile abschaltbar --------------------------------------
+  {
+    table: "users",
+    column: "pdf_footer_enabled",
+    since: "022_pdf_footer.sql",
+  },
 ];
 
 /** Kompaktes `tabelle.spalte`-Kürzel – Format der `missing`-Liste in /api/health. */

@@ -7,6 +7,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import { formatCurrency, formatDate, formatMonth } from "../format";
+import { PdfFooter } from "./pdfFooter";
 
 export type DunningChargeRow = {
   period: string; // YYYY-MM-DD (1. des Monats)
@@ -40,6 +41,7 @@ export type DunningLetterData = {
     bankName: string | null;
     bic: string | null;
   };
+  footerEnabled?: boolean;
 };
 
 /** Betreff-Textbaustein je Mahnstufe. */
@@ -305,6 +307,8 @@ function DunningLetterDocument({ data }: { data: DunningLetterData }) {
         {/* Grußformel + Unterschriftszeile */}
         <Text>Mit freundlichen Grüßen</Text>
         <Text style={styles.signatureName}>{sender.fullName}</Text>
+
+        <PdfFooter enabled={data.footerEnabled} />
       </Page>
     </Document>
   );

@@ -52,6 +52,8 @@ export type MietvertragData = {
     hausordnung: boolean;
     lueftung: boolean;
   };
+
+  footerEnabled?: boolean;
 };
 
 // --------------------------------------------------------------------------

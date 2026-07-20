@@ -75,7 +75,7 @@ export async function loadHandoverProtocolData(
   const { data: profile } = await supabase
     .from("users")
     .select(
-      "full_name, company_name, address_street, address_zip, address_city",
+      "full_name, company_name, address_street, address_zip, address_city, pdf_footer_enabled",
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -129,5 +129,6 @@ export async function loadHandoverProtocolData(
     signatureLandlord: protocol.signature_landlord,
     signatureTenant: protocol.signature_tenant,
     signatureCity: profile?.address_city ?? null,
+    footerEnabled: profile?.pdf_footer_enabled ?? true,
   };
 }
