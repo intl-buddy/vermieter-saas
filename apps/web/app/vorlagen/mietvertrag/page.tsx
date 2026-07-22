@@ -7,7 +7,7 @@ import { getEffectiveUserId } from "@/lib/account-context";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MietvertragForm } from "./MietvertragForm";
+import { MietvertragFlow } from "./MietvertragFlow";
 
 export const metadata = { title: "Mietvertrag · Vorlagen · tefter" };
 
@@ -37,8 +37,8 @@ export default async function MietvertragPage() {
           Mietvertrag
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Wohnraummietvertrag als Mustervorlage – Vertragsdaten werden aus der
-          Auswahl vorbefüllt.
+          Wohnraum- oder Gewerbemietvertrag als Mustervorlage – Vertragsdaten
+          werden aus der Auswahl vorbefüllt.
         </p>
       </div>
 
@@ -50,7 +50,7 @@ export default async function MietvertragPage() {
           </CardContent>
         </Card>
       ) : (
-        <MietvertragForm properties={properties} sender={sender} />
+        <MietvertragFlow properties={properties} sender={sender} />
       )}
     </AppShell>
   );

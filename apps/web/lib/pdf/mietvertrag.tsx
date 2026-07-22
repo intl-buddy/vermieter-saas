@@ -16,12 +16,12 @@ import {
 
 export type { MietvertragData } from "./mietvertragContent";
 
-const GREEN = "#2a9549";
-const INK = "#1a1a1a";
-const MUTED = "#5a5a5a";
+export const GREEN = "#2a9549";
+export const INK = "#1a1a1a";
+export const MUTED = "#5a5a5a";
 const LINE = "#c9c9c9";
 
-const styles = StyleSheet.create({
+export const styles = StyleSheet.create({
   page: {
     paddingTop: 54,
     paddingBottom: 58,
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   sepaField: { flex: 1, borderBottomWidth: 1, borderBottomColor: LINE, minHeight: 14 },
 });
 
-function renderBlock(block: Block, key: number) {
+export function renderBlock(block: Block, key: number) {
   switch (block.t) {
     case "clause":
       return (
@@ -219,7 +219,7 @@ function renderBlock(block: Block, key: number) {
   }
 }
 
-function SectionView({ section }: { section: Section }) {
+export function SectionView({ section }: { section: Section }) {
   return (
     <View>
       <View wrap={false}>
@@ -267,7 +267,7 @@ function SepaForm({ glaeubiger }: { glaeubiger: string }) {
   );
 }
 
-function SignatureBlock() {
+export function SignatureBlock() {
   return (
     <View style={styles.signWrap} wrap={false}>
       <View style={styles.signRow}>
@@ -294,7 +294,7 @@ function SignatureBlock() {
   );
 }
 
-function AnlageView({ anlage }: { anlage: Anlage }) {
+export function AnlageView({ anlage }: { anlage: Anlage }) {
   return (
     <View break>
       <View style={styles.anlageCover}>

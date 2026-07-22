@@ -157,7 +157,7 @@ function kautionSatz(type: string, amount: number): string {
 // Einfache Dokumente (Hausordnung, Lüftungshinweise) parsen
 // --------------------------------------------------------------------------
 
-function parseSimpleDoc(raw: string): Block[] {
+export function parseSimpleDoc(raw: string): Block[] {
   const lines = raw.split("\n");
   const blocks: Block[] = [];
   let group: string[] = [];

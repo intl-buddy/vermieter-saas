@@ -64,9 +64,12 @@ function daysBetween(a: string, b: string): number {
 export function MietvertragForm({
   properties,
   sender,
+  onSelectedUnitType,
 }: {
   properties: VorlagenProperty[];
   sender: VorlagenSender;
+  /** Meldet den unit_type der gewählten Einheit (für die Vertragstyp-Empfehlung). */
+  onSelectedUnitType?: (unitType: string | null) => void;
 }) {
   const [mode, setMode] = useState<"tefter" | "manual">("tefter");
   const [propertyId, setPropertyId] = useState<string | null>(null);
@@ -125,6 +128,11 @@ export function MietvertragForm({
     );
     setZimmer(unit.rooms != null ? String(unit.rooms) : "");
   }, [property, unit]);
+
+  // unit_type der Auswahl nach oben melden (Vertragstyp-Empfehlung).
+  useEffect(() => {
+    onSelectedUnitType?.(unit?.unit_type ?? null);
+  }, [unit, onSelectedUnitType]);
 
   // Mieter- und Mietdaten aus dem Mietverhältnis vorbefüllen (tefter-Modus).
   useEffect(() => {

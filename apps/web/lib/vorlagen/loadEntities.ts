@@ -30,6 +30,7 @@ export type VorlagenUnit = {
   label: string;
   floor: string | null;
   rooms: number | null;
+  living_area: number | null;
   unit_type: string;
   tenants: VorlagenTenant[];
 };
@@ -70,7 +71,7 @@ export async function loadVorlagenData(
     supabase
       .from("properties")
       .select(
-        "id, name, street, house_number, zip, city, rent_iban, units(id, label, floor, rooms, unit_type, tenants(id, first_name, last_name, email, move_in_date, move_out_date, cold_rent, operating_costs_advance, heating_costs_advance, advance_mode, deposit_amount, deposit_type, iban))",
+        "id, name, street, house_number, zip, city, rent_iban, units(id, label, floor, rooms, living_area, unit_type, tenants(id, first_name, last_name, email, move_in_date, move_out_date, cold_rent, operating_costs_advance, heating_costs_advance, advance_mode, deposit_amount, deposit_type, iban))",
       )
       .order("name", { ascending: true }),
     supabase
@@ -96,6 +97,7 @@ export async function loadVorlagenData(
         label: u.label,
         floor: u.floor,
         rooms: u.rooms,
+        living_area: u.living_area,
         unit_type: u.unit_type,
         tenants: (u.tenants ?? []).map((t) => ({
           id: t.id,
