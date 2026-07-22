@@ -5,6 +5,7 @@ import type { Database } from "@repo/core";
 import type { SupabaseServerClient } from "@/lib/supabase/server";
 import { createClient } from "@/lib/supabase/server";
 import { assertWriteAccess } from "@/lib/access";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { parseDecimal } from "@/lib/parse";
 import { COST_TYPE_LABELS, ALLOCATION_OPTIONS } from "./labels";
 
@@ -162,7 +163,8 @@ export async function createRecord(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Bitte melde dich erneut an." };
-  const writeError = await assertWriteAccess(supabase, user.id);
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+  const writeError = await assertWriteAccess(supabase, uid);
   if (writeError) return { error: writeError };
 
   const fields = readRecordFields(formData);
@@ -170,7 +172,7 @@ export async function createRecord(
 
   const { data: inserted, error: insertError } = await supabase
     .from("operating_costs_records")
-    .insert({ user_id: user.id, ...fields.data })
+    .insert({ user_id: uid, ...fields.data })
     .select("id")
     .single();
 
@@ -182,7 +184,7 @@ export async function createRecord(
 
   const file = formData.get("receipt");
   if (file instanceof File && file.size > 0) {
-    const result = await uploadReceipt(supabase, user.id, inserted.id, file);
+    const result = await uploadReceipt(supabase, uid, inserted.id, file);
     if (result.message) {
       return { success: `Beleg gespeichert, aber ${result.message}.` };
     }
@@ -206,7 +208,8 @@ export async function updateRecord(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Bitte melde dich erneut an." };
-  const writeError = await assertWriteAccess(supabase, user.id);
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+  const writeError = await assertWriteAccess(supabase, uid);
   if (writeError) return { error: writeError };
 
   const id = String(formData.get("id") ?? "").trim();
@@ -234,7 +237,7 @@ export async function updateRecord(
   // Neue Datei ersetzt die alte im Storage.
   const file = formData.get("receipt");
   if (file instanceof File && file.size > 0) {
-    const result = await uploadReceipt(supabase, user.id, id, file);
+    const result = await uploadReceipt(supabase, uid, id, file);
     if (result.message) {
       return { success: `Änderungen gespeichert, aber ${result.message}.` };
     }
@@ -260,7 +263,8 @@ export async function deleteRecord(id: string): Promise<{ error?: string }> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Bitte melde dich erneut an." };
-  const writeError = await assertWriteAccess(supabase, user.id);
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+  const writeError = await assertWriteAccess(supabase, uid);
   if (writeError) return { error: writeError };
 
   const { data: existing } = await supabase

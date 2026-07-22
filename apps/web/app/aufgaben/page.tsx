@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Repeat } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,12 +43,22 @@ export default async function AufgabenPage({
     redirect("/login");
   }
 
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+
   const today = todayIso();
 
   // Objekte & Einheiten für Dialog und Scope-Anzeige
   const [{ data: properties }, { data: units }] = await Promise.all([
-    supabase.from("properties").select("id, name").order("name"),
-    supabase.from("units").select("id, label, property_id").order("label"),
+    supabase
+      .from("properties")
+      .select("id, name")
+      .eq("user_id", uid)
+      .order("name"),
+    supabase
+      .from("units")
+      .select("id, label, property_id")
+      .eq("user_id", uid)
+      .order("label"),
   ]);
 
   const propertyMap = new Map((properties ?? []).map((p) => [p.id, p.name]));
@@ -73,7 +84,8 @@ export default async function AufgabenPage({
   // Aufgaben nach Filter laden
   let query = supabase
     .from("generated_tasks")
-    .select("id, title, description, due_date, status, property_id, unit_id");
+    .select("id, title, description, due_date, status, property_id, unit_id")
+    .eq("user_id", uid);
 
   if (filter === "erledigt") {
     query = query.eq("status", "done").order("due_date", { ascending: false });

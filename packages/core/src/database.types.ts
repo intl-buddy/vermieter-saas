@@ -9,6 +9,49 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      account_links: {
+        Row: {
+          granted_at: string
+          id: string
+          manager_email: string
+          manager_user_id: string | null
+          owner_user_id: string
+          revoked_at: string | null
+          status: Database["public"]["Enums"]["account_link_status"]
+        }
+        Insert: {
+          granted_at?: string
+          id?: string
+          manager_email?: string
+          manager_user_id?: string | null
+          owner_user_id: string
+          revoked_at?: string | null
+          status?: Database["public"]["Enums"]["account_link_status"]
+        }
+        Update: {
+          granted_at?: string
+          id?: string
+          manager_email?: string
+          manager_user_id?: string | null
+          owner_user_id?: string
+          revoked_at?: string | null
+          status?: Database["public"]["Enums"]["account_link_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_links_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_links_manager_user_id_fkey"
+            columns: ["manager_user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_runs: {
         Row: {
           created_at: string
@@ -1179,6 +1222,19 @@ export type Database = {
       }
     }
     Functions: {
+      has_account_access: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
+      my_managed_accounts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          owner_user_id: string
+          owner_name: string
+          owner_email: string
+          granted_at: string
+        }[]
+      }
       admin_feature_usage: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_funnel_stats: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_list_tickets: { Args: Record<PropertyKey, never>; Returns: Json }
@@ -1233,6 +1289,7 @@ export type Database = {
       }
     }
     Enums: {
+      account_link_status: "active" | "revoked"
       allocation_key:
         | "living_area"
         | "persons"

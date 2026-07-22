@@ -1,6 +1,7 @@
 import { canWrite, getAccessStatus, type AccessStatus } from "@repo/core";
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseServerClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/account-context";
 
 /** Fehlermeldung/Tooltip im Lesemodus. */
 export const READONLY_WRITE_ERROR =
@@ -38,6 +39,10 @@ export type WriteGuard = { userId: string } | { error: string };
 /**
  * Authentifiziert den Nutzer UND stellt Schreibrechte sicher (aktives Abo oder
  * Testzeitraum). Ersatz für einfache `requireUserId`-Guards in Schreib-Actions.
+ *
+ * Verwaltet der Nutzer gerade ein fremdes Konto (Hausverwaltung), liefert der
+ * Guard die `user_id` dieses Owners – Inserts/Updates landen dann im richtigen
+ * Konto, und die Abo-Prüfung greift auf den Status des Owners zu.
  */
 export async function requireWriteAccess(): Promise<WriteGuard> {
   const supabase = await createClient();
@@ -46,7 +51,8 @@ export async function requireWriteAccess(): Promise<WriteGuard> {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Bitte melde dich erneut an." };
 
-  const error = await assertWriteAccess(supabase, user.id);
+  const ctx = await getEffectiveUserId(supabase, user.id);
+  const error = await assertWriteAccess(supabase, ctx.effectiveUserId);
   if (error) return { error };
-  return { userId: user.id };
+  return { userId: ctx.effectiveUserId };
 }

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { loadVorlagenData } from "@/lib/vorlagen/loadEntities";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,7 +20,8 @@ export default async function AbmahnungPage() {
     redirect("/login");
   }
 
-  const { properties, sender } = await loadVorlagenData(supabase, user.id);
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+  const { properties, sender } = await loadVorlagenData(supabase, uid);
 
   return (
     <AppShell title="Abmahnung" userEmail={user.email ?? ""}>

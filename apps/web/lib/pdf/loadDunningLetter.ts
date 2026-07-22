@@ -21,7 +21,7 @@ export async function loadDunningLetterData(
   const { data: letter } = await supabase
     .from("dunning_letters")
     .select(
-      "id, tenant_id, level, issued_at, payment_deadline, amount_due, fee, covered_periods",
+      "id, user_id, tenant_id, level, issued_at, payment_deadline, amount_due, fee, covered_periods",
     )
     .eq("id", letterId)
     .maybeSingle();
@@ -48,13 +48,14 @@ export async function loadDunningLetterData(
     .maybeSingle();
   if (!property) return null;
 
-  // Absender = eingeloggter Nutzer (per RLS ohnehin nur die eigene Zeile).
+  // Absender = Eigentümer der Mahnung (nicht zwingend der eingeloggte Nutzer:
+  // eine verknüpfte Hausverwaltung erzeugt Mahnungen im Konto des Owners).
   const { data: profile } = await supabase
     .from("users")
     .select(
       "full_name, company_name, address_street, address_zip, address_city, iban, bank_name, bic, pdf_footer_enabled",
     )
-    .eq("id", user.id)
+    .eq("id", letter.user_id)
     .maybeSingle();
 
   const { data: openCharges } = await supabase.rpc("open_charges", {

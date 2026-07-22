@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { FileDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,6 +35,8 @@ export default async function ProtocolPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+
   const { data: protocol } = await supabase
     .from("handover_protocols")
     .select(
@@ -42,7 +45,7 @@ export default async function ProtocolPage({
     .eq("id", id)
     .maybeSingle();
 
-  if (!protocol || protocol.user_id !== user.id) notFound();
+  if (!protocol || protocol.user_id !== uid) notFound();
 
   // Einheit + Objekt
   const { data: unit } = await supabase
@@ -66,11 +69,11 @@ export default async function ProtocolPage({
   const meters = parseMeters(protocol.meter_readings);
   const keys = parseKeys(protocol.keys);
 
-  // Absenderprofil (Vermieter-Name + eigene E-Mail für Kopie)
+  // Absenderprofil (Vermieter = Eigentümer des Protokolls)
   const { data: profile } = await supabase
     .from("users")
     .select("full_name, company_name, email")
-    .eq("id", user.id)
+    .eq("id", uid)
     .maybeSingle();
   const landlordName =
     profile?.company_name?.trim() || profile?.full_name?.trim() || "";

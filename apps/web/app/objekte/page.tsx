@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -26,9 +27,12 @@ export default async function ObjektePage() {
     redirect("/login");
   }
 
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+
   const { data: properties, error } = await supabase
     .from("properties")
     .select("id, name, street, house_number, zip, city, units(count)")
+    .eq("user_id", uid)
     .order("name", { ascending: true });
 
   return (

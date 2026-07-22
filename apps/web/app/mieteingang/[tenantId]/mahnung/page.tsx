@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { formatDate } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,8 @@ export default async function MahnungPreviewPage({
     redirect("/login");
   }
 
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+
   const { data: tenant } = await supabase
     .from("tenants")
     .select("id, first_name, last_name")
@@ -62,7 +65,7 @@ export default async function MahnungPreviewPage({
       supabase
         .from("users")
         .select("dunning_fee, dunning_deadline_days")
-        .eq("id", user.id)
+        .eq("id", uid)
         .maybeSingle(),
     ]);
 

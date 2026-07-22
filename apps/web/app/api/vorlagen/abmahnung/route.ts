@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { renderAbmahnungPdf } from "@/lib/pdf/abmahnungLetter";
 import { pdfDownloadResponse, safeFilePart } from "@/lib/pdf/pdfResponse";
 import type { LetterSender } from "@/lib/pdf/letterShared";
@@ -26,6 +27,8 @@ export async function POST(request: Request) {
     return new Response("Nicht angemeldet.", { status: 401 });
   }
 
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+
   let body: Body;
   try {
     body = (await request.json()) as Body;
@@ -43,7 +46,7 @@ export async function POST(request: Request) {
     .select(
       "full_name, company_name, address_street, address_zip, address_city, pdf_footer_enabled",
     )
-    .eq("id", user.id)
+    .eq("id", uid)
     .maybeSingle();
 
   const sender: LetterSender = {

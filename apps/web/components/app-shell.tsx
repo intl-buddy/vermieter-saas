@@ -5,9 +5,11 @@ import {
   type AccessStatus,
 } from "@repo/core";
 import { createClient } from "@/lib/supabase/server";
+import { getAccountContext, type AccountContext } from "@/lib/account-context";
 import { formatDate } from "@/lib/format";
 import { BottomNav } from "@/components/bottom-nav";
 import { UserMenu } from "@/components/user-menu";
+import { AccountBanner } from "@/components/account-banner";
 
 /**
  * Grundgerüst für eingeloggte Seiten: schlanke Topbar oben, fixierte
@@ -24,9 +26,10 @@ export async function AppShell({
   userEmail: string;
   children: React.ReactNode;
 }) {
-  const [access, isAdmin] = await Promise.all([
+  const [access, isAdmin, accountCtx] = await Promise.all([
     getAccessSummary(),
     getIsAdmin(),
+    getManagerContext(),
   ]);
 
   return (
@@ -49,13 +52,22 @@ export async function AppShell({
             </>
           ) : null}
           <div className="ml-auto">
-            <UserMenu email={userEmail} isAdmin={isAdmin} />
+            <UserMenu
+              email={userEmail}
+              isAdmin={isAdmin}
+              managedAccounts={accountCtx?.managedAccounts ?? []}
+              activeOwnerId={accountCtx?.owner?.id ?? null}
+            />
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-4xl px-4 pt-[76px] pb-[calc(92px+env(safe-area-inset-bottom))]">
-        {access?.status === "trial" ? (
+        {accountCtx?.isManaging && accountCtx.owner ? (
+          <AccountBanner ownerName={accountCtx.owner.name} />
+        ) : null}
+
+        {!accountCtx?.isManaging && access?.status === "trial" ? (
           <Link
             href="/preise"
             className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-gold-200 bg-gold-50 px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-gold-100"
@@ -73,7 +85,7 @@ export async function AppShell({
           </Link>
         ) : null}
 
-        {access?.status === "readonly" ? (
+        {!accountCtx?.isManaging && access?.status === "readonly" ? (
           <div className="mb-4 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-800">
             <p className="font-semibold">Dein Abo ist beendet – Lesemodus aktiv.</p>
             <p className="mt-0.5 text-danger-700">
@@ -165,5 +177,22 @@ async function getIsAdmin(): Promise<boolean> {
     return data?.is_admin === true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Kontext für den Konto-Umschalter und das Verwaltungs-Banner. Fehler werden
+ * geschluckt – die Verknüpfung ist optional und darf keine Seite blockieren.
+ */
+async function getManagerContext(): Promise<AccountContext | null> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+    return await getAccountContext(supabase, user.id);
+  } catch {
+    return null;
   }
 }

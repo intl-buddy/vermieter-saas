@@ -48,7 +48,9 @@ export async function loadHandoverProtocolData(
     .eq("id", protocolId)
     .maybeSingle();
 
-  if (!protocol || protocol.user_id !== user.id) return null;
+  // RLS (has_account_access) stellt bereits sicher, dass nur der Owner oder
+  // eine verknüpfte Hausverwaltung dieses Protokoll laden kann.
+  if (!protocol) return null;
 
   // Einheit + Objekt
   const { data: unit } = await supabase
@@ -71,13 +73,13 @@ export async function loadHandoverProtocolData(
     }
   }
 
-  // Absenderprofil (Vermieter)
+  // Absenderprofil (Vermieter = Eigentümer des Protokolls)
   const { data: profile } = await supabase
     .from("users")
     .select(
       "full_name, company_name, address_street, address_zip, address_city, pdf_footer_enabled",
     )
-    .eq("id", user.id)
+    .eq("id", protocol.user_id)
     .maybeSingle();
 
   // Räume inkl. Fotos (max. MAX_PHOTOS_IN_PDF je Raum als Data-URL)

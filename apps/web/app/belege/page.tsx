@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Database } from "@repo/core";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,19 +40,27 @@ export default async function BelegePage({
     redirect("/login");
   }
 
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
   const [{ data: properties }, { data: unitsData }, { data: tenantsData }] =
     await Promise.all([
-      supabase.from("properties").select("id, name").order("name"),
+      supabase
+        .from("properties")
+        .select("id, name")
+        .eq("user_id", uid)
+        .order("name"),
       supabase
         .from("units")
         .select("id, label, property_id")
+        .eq("user_id", uid)
         .order("label"),
       supabase
         .from("tenants")
         .select("id, first_name, last_name, unit_id, move_out_date, units(property_id)")
+        .eq("user_id", uid)
         .order("last_name"),
     ]);
   const propertyIds = new Set((properties ?? []).map((p) => p.id));
@@ -87,7 +96,8 @@ export default async function BelegePage({
     .from("operating_costs_records")
     .select(
       "id, invoice_date, invoice_number, paid_date, cost_type, vendor, amount, gross_amount, vat_rate, allocation_key, billing_period_start, billing_period_end, is_apportionable, receipt_url, notes, property_id, unit_id, tenant_id, properties(name, street, house_number, zip, city)",
-    );
+    )
+    .eq("user_id", uid);
   if (objekt) query = query.eq("property_id", objekt);
   if (kostenart) query = query.eq("cost_type", kostenart);
   if (jahr) {
@@ -100,6 +110,7 @@ export default async function BelegePage({
     supabase
       .from("operating_costs_records")
       .select("id", { count: "exact", head: true })
+      .eq("user_id", uid)
       .is("paid_date", null),
   ]);
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { formatDate } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,13 +22,24 @@ export default async function ProtokolleStartPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+
   const [{ data: properties }, { data: units }, { data: tenants }] =
     await Promise.all([
-      supabase.from("properties").select("id, name").order("name"),
-      supabase.from("units").select("id, label, property_id").order("label"),
+      supabase
+        .from("properties")
+        .select("id, name")
+        .eq("user_id", uid)
+        .order("name"),
+      supabase
+        .from("units")
+        .select("id, label, property_id")
+        .eq("user_id", uid)
+        .order("label"),
       supabase
         .from("tenants")
         .select("id, unit_id, move_out_date")
+        .eq("user_id", uid)
         .is("move_out_date", null),
     ]);
 
@@ -49,6 +61,7 @@ export default async function ProtokolleStartPage() {
   const { data: protocols } = await supabase
     .from("handover_protocols")
     .select("id, unit_id, tenant_name, type, protocol_date, status")
+    .eq("user_id", uid)
     .order("protocol_date", { ascending: false })
     .limit(20);
 

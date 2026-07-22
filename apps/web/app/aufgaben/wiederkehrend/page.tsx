@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft, Building2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,15 +22,26 @@ export default async function WiederkehrendPage() {
     redirect("/login");
   }
 
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+
   const [{ data: properties }, { data: units }, { data: templates }] =
     await Promise.all([
-      supabase.from("properties").select("id, name").order("name"),
-      supabase.from("units").select("id, label, property_id").order("label"),
+      supabase
+        .from("properties")
+        .select("id, name")
+        .eq("user_id", uid)
+        .order("name"),
+      supabase
+        .from("units")
+        .select("id, label, property_id")
+        .eq("user_id", uid)
+        .order("label"),
       supabase
         .from("task_templates")
         .select(
           "id, title, description, interval, day_of_month, month_of_year, is_active, property_id, unit_id",
         )
+        .eq("user_id", uid)
         .order("title"),
     ]);
 

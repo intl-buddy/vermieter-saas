@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "../../lib/supabase/server";
 import { assertWriteAccess } from "../../lib/access";
+import { getEffectiveUserId } from "../../lib/account-context";
 import { parseDecimal } from "../../lib/parse";
 import { renderDunningLetterPdf } from "../../lib/pdf/dunningLetter";
 import { loadDunningLetterData } from "../../lib/pdf/loadDunningLetter";
@@ -38,7 +39,8 @@ export async function createDunning(
   if (!user) {
     return { error: "Bitte melde dich erneut an." };
   }
-  const writeError = await assertWriteAccess(supabase, user.id);
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+  const writeError = await assertWriteAccess(supabase, uid);
   if (writeError) return { error: writeError };
 
   const tenantId = String(formData.get("tenant_id") ?? "").trim();
@@ -90,7 +92,7 @@ export async function createDunning(
   const { data: inserted, error: insertError } = await supabase
     .from("dunning_letters")
     .insert({
-      user_id: user.id,
+      user_id: uid,
       tenant_id: tenantId,
       level,
       issued_at: issuedAt,
@@ -110,7 +112,7 @@ export async function createDunning(
   }
 
   const dunningId = inserted.id;
-  const path = `${user.id}/${dunningId}.pdf`;
+  const path = `${uid}/${dunningId}.pdf`;
 
   // 2) PDF rendern (bestehende Pipeline)
   const data = await loadDunningLetterData(supabase, dunningId);
@@ -155,7 +157,8 @@ export async function markDunningSent(
   if (!user) {
     return { error: "Bitte melde dich erneut an." };
   }
-  const writeError = await assertWriteAccess(supabase, user.id);
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+  const writeError = await assertWriteAccess(supabase, uid);
   if (writeError) return { error: writeError };
 
   const id = String(formData.get("id") ?? "").trim();

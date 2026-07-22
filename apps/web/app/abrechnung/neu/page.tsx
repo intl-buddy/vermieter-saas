@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Wizard } from "./Wizard";
@@ -21,9 +22,12 @@ export default async function AbrechnungNeuPage({
     redirect("/login");
   }
 
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+
   const { data: properties } = await supabase
     .from("properties")
     .select("id, name")
+    .eq("user_id", uid)
     .order("name");
 
   return (

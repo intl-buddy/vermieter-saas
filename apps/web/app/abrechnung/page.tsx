@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -28,11 +29,14 @@ export default async function AbrechnungenPage() {
     redirect("/login");
   }
 
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+
   const { data: runs } = await supabase
     .from("billing_runs")
     .select(
       "id, period_start, period_end, status, total_costs, tenant_count, properties(name)",
     )
+    .eq("user_id", uid)
     .order("created_at", { ascending: false });
 
   return (

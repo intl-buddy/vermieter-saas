@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -33,9 +34,12 @@ export default async function MieteingangPage() {
     redirect("/login");
   }
 
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+
   const { data: balances, error } = await supabase
     .from("tenant_balances")
     .select("tenant_id, first_name, last_name, total_due, total_paid, balance")
+    .eq("user_id", uid)
     .order("balance", { ascending: false });
 
   return (

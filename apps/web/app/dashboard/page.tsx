@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { formatCurrency } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -77,6 +78,8 @@ export default async function DashboardPage({
     redirect("/login");
   }
 
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+
   const [
     { data: profile },
     propertiesCount,
@@ -88,16 +91,28 @@ export default async function DashboardPage({
     supabase
       .from("users")
       .select("full_name, onboarding_completed")
-      .eq("id", user.id)
+      .eq("id", uid)
       .maybeSingle(),
-    supabase.from("properties").select("id", { count: "exact", head: true }),
-    supabase.from("tenant_balances").select("balance"),
+    supabase
+      .from("properties")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", uid),
+    supabase.from("tenant_balances").select("balance").eq("user_id", uid),
     supabase
       .from("generated_tasks")
       .select("status, due_date")
+      .eq("user_id", uid)
       .in("status", ["open", "overdue"]),
-    supabase.from("properties").select("id, name").order("name"),
-    supabase.from("units").select("id, label, property_id").order("label"),
+    supabase
+      .from("properties")
+      .select("id, name")
+      .eq("user_id", uid)
+      .order("name"),
+    supabase
+      .from("units")
+      .select("id, label, property_id")
+      .eq("user_id", uid)
+      .order("label"),
   ]);
 
   // Optionen für die wiederverwendeten Dialoge (Beleg / Aufgabe)

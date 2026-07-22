@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import type { Database, Json } from "@repo/core";
 import { createClient } from "../../lib/supabase/server";
 import { assertWriteAccess } from "../../lib/access";
+import { getEffectiveUserId } from "../../lib/account-context";
 import { renderHandoverProtocolPdf } from "../../lib/pdf/handoverProtocol";
 import { loadHandoverProtocolData } from "../../lib/pdf/loadHandoverProtocol";
 import type {
@@ -35,7 +36,8 @@ export async function createProtocolDraft(formData: FormData): Promise<void> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const writeError = await assertWriteAccess(supabase, user.id);
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+  const writeError = await assertWriteAccess(supabase, uid);
   if (writeError) {
     redirect("/protokolle?fehler=zugriff");
   }
@@ -55,7 +57,7 @@ export async function createProtocolDraft(formData: FormData): Promise<void> {
     .select("id, user_id")
     .eq("id", unitId)
     .maybeSingle();
-  if (!unit || unit.user_id !== user.id) {
+  if (!unit || unit.user_id !== uid) {
     redirect("/protokolle?fehler=einheit");
   }
 
@@ -79,7 +81,7 @@ export async function createProtocolDraft(formData: FormData): Promise<void> {
   const { data: inserted, error } = await supabase
     .from("handover_protocols")
     .insert({
-      user_id: user.id,
+      user_id: uid,
       unit_id: unitId,
       tenant_id: tenantId,
       tenant_name: tenantName,
@@ -130,7 +132,8 @@ export async function saveProtocolStep(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Bitte melde dich erneut an." };
-  const writeError = await assertWriteAccess(supabase, user.id);
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+  const writeError = await assertWriteAccess(supabase, uid);
   if (writeError) return { ok: false, error: writeError };
 
   const { data: existing } = await supabase
@@ -138,7 +141,7 @@ export async function saveProtocolStep(
     .select("id, user_id, status")
     .eq("id", protocolId)
     .maybeSingle();
-  if (!existing || existing.user_id !== user.id) {
+  if (!existing || existing.user_id !== uid) {
     return { ok: false, error: "Protokoll nicht gefunden." };
   }
   if (existing.status === "completed") {
@@ -191,7 +194,8 @@ export async function completeProtocol(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Bitte melde dich erneut an." };
-  const writeError = await assertWriteAccess(supabase, user.id);
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+  const writeError = await assertWriteAccess(supabase, uid);
   if (writeError) return { ok: false, error: writeError };
 
   // Letzten Schritt (i. d. R. Unterschriften) noch speichern.
@@ -205,7 +209,7 @@ export async function completeProtocol(
   }
   const pdf = await renderHandoverProtocolPdf(data);
 
-  const path = `${user.id}/${protocolId}/protokoll.pdf`;
+  const path = `${uid}/${protocolId}/protokoll.pdf`;
   const bytes = new Uint8Array(pdf.byteLength);
   bytes.set(pdf);
   const { error: uploadError } = await supabase.storage

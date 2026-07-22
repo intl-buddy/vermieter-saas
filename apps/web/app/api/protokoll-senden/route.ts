@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { assertWriteAccess } from "@/lib/access";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { sendBrevoEmail, tefterEmailShell } from "@/lib/email";
 import { renderHandoverProtocolPdf } from "@/lib/pdf/handoverProtocol";
 import { loadHandoverProtocolData } from "@/lib/pdf/loadHandoverProtocol";
@@ -28,7 +29,8 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
   }
-  const writeError = await assertWriteAccess(supabase, user.id);
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+  const writeError = await assertWriteAccess(supabase, uid);
   if (writeError) {
     return NextResponse.json({ error: writeError }, { status: 403 });
   }
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
     .select("id, user_id, tenant_name, tenant_email, type, protocol_date, pdf_url")
     .eq("id", protocolId)
     .maybeSingle();
-  if (!protocol || protocol.user_id !== user.id) {
+  if (!protocol || protocol.user_id !== uid) {
     return NextResponse.json(
       { error: "Protokoll nicht gefunden." },
       { status: 404 },
@@ -75,11 +77,11 @@ export async function POST(request: Request) {
     );
   }
 
-  // Absenderprofil
+  // Absenderprofil = Eigentümer (bei Verwaltung nicht der eingeloggte Nutzer).
   const { data: profile } = await supabase
     .from("users")
     .select("full_name, company_name, email")
-    .eq("id", user.id)
+    .eq("id", uid)
     .maybeSingle();
   const senderName =
     profile?.company_name?.trim() || profile?.full_name?.trim() || "tefter";

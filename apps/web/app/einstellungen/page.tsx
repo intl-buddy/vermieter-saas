@@ -9,6 +9,7 @@ import { KontoSection } from "./KontoSection";
 import { AboSection } from "./AboSection";
 import { DatenExportSection } from "./DatenExportSection";
 import { DokumenteSection } from "./DokumenteSection";
+import { HausverwaltungSection } from "./HausverwaltungSection";
 
 export const metadata = { title: "Einstellungen · tefter" };
 
@@ -31,6 +32,16 @@ export default async function EinstellungenPage() {
       .maybeSingle(),
     supabase.from("units").select("id", { count: "exact", head: true }),
   ]);
+
+  // Aktive Verknüpfung mit der Hausverwaltung (falls vorhanden).
+  const { data: activeLink } = await supabase
+    .from("account_links")
+    .select("granted_at")
+    .eq("owner_user_id", user.id)
+    .eq("status", "active")
+    .order("granted_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   const plan = profile?.plan ?? "trial";
   const subscriptionStatus = profile?.subscription_status ?? "trialing";
@@ -108,6 +119,15 @@ export default async function EinstellungenPage() {
         <DokumenteSection
           footerEnabled={profile?.pdf_footer_enabled ?? true}
         />
+      </div>
+
+      <div className="mt-10">
+        <h2 className="text-xl font-bold tracking-tight">Hausverwaltung</h2>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">
+          Verknüpfe dein Konto mit der OA Hausverwaltung – Freigabe statt
+          Passwort-Weitergabe.
+        </p>
+        <HausverwaltungSection linkedAt={activeLink?.granted_at ?? null} />
       </div>
 
       <div className="mt-10">

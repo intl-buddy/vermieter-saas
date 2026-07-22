@@ -14,6 +14,7 @@ import {
 } from "@repo/core";
 import { createClient } from "@/lib/supabase/server";
 import { assertWriteAccess } from "@/lib/access";
+import { getEffectiveUserId } from "@/lib/account-context";
 import { renderBillingStatementPdf } from "@/lib/pdf/billingStatement";
 import { COST_TYPE_LABELS } from "@/app/belege/labels";
 
@@ -98,7 +99,8 @@ export async function uploadMessdienstPdf(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Bitte melde dich erneut an." };
-  const writeError = await assertWriteAccess(supabase, user.id);
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+  const writeError = await assertWriteAccess(supabase, uid);
   if (writeError) return { error: writeError };
 
   const file = formData.get("file");
@@ -114,7 +116,7 @@ export async function uploadMessdienstPdf(
   }
 
   const safeTenant = tenantId.replace(/[^a-zA-Z0-9-]/g, "") || "unbekannt";
-  const path = `${user.id}/messdienst/${safeTenant}-${Date.now()}.pdf`;
+  const path = `${uid}/messdienst/${safeTenant}-${Date.now()}.pdf`;
   const { error } = await supabase.storage
     .from("statements")
     .upload(path, file, { contentType: "application/pdf", upsert: true });
@@ -326,7 +328,8 @@ export async function finalizeBilling(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Bitte melde dich erneut an." };
-  const writeError = await assertWriteAccess(supabase, user.id);
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+  const writeError = await assertWriteAccess(supabase, uid);
   if (writeError) return { error: writeError };
 
   const data = await assembleData(
@@ -356,7 +359,7 @@ export async function finalizeBilling(
       .in("tenant_id", editedTenantIds);
     const rows = editedTenantIds.flatMap((tid) =>
       (payload.personPeriods[tid] ?? []).map((p) => ({
-        user_id: user.id,
+        user_id: uid,
         tenant_id: tid,
         valid_from: p.from,
         valid_to: p.to,
@@ -387,7 +390,7 @@ export async function finalizeBilling(
     .select(
       "full_name, company_name, address_street, address_zip, address_city, iban, bank_name, bic, pdf_footer_enabled",
     )
-    .eq("id", user.id)
+    .eq("id", uid)
     .maybeSingle();
   const { data: propWithIban } = await supabase
     .from("properties")
@@ -399,7 +402,7 @@ export async function finalizeBilling(
   const { data: run, error: runError } = await supabase
     .from("billing_runs")
     .insert({
-      user_id: user.id,
+      user_id: uid,
       property_id: payload.propertyId,
       period_start: payload.periodStart,
       period_end: payload.periodEnd,
@@ -496,7 +499,7 @@ export async function finalizeBilling(
     const { data: statement, error: statementError } = await supabase
       .from("billing_statements")
       .insert({
-        user_id: user.id,
+        user_id: uid,
         billing_run_id: run.id,
         tenant_id: st.tenant_id,
         unit_id: t?.unit_id ?? null,
@@ -611,7 +614,7 @@ export async function finalizeBilling(
       outputPdf = await merged.save();
     }
 
-    const path = `${user.id}/${statement.id}.pdf`;
+    const path = `${uid}/${statement.id}.pdf`;
     const bytes = new Uint8Array(outputPdf.byteLength);
     bytes.set(outputPdf);
     const { error: uploadError } = await supabase.storage
@@ -652,7 +655,8 @@ export async function deleteBillingRun(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Bitte melde dich erneut an." };
-  const writeError = await assertWriteAccess(supabase, user.id);
+  const { effectiveUserId: uid } = await getEffectiveUserId(supabase, user.id);
+  const writeError = await assertWriteAccess(supabase, uid);
   if (writeError) return { error: writeError };
 
   // PDF-Pfade der Statements (inkl. Messdienst-Anlagen) aus dem Bucket entfernen.

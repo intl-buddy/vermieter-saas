@@ -364,6 +364,38 @@ export const EXPECTED_COLUMNS: ExpectedColumn[] = [
     column: "pdf_footer_enabled",
     since: "022_pdf_footer.sql",
   },
+
+  // --- 023: Konto-Verknüpfung (OA Hausverwaltung) -------------------------
+  {
+    table: "account_links",
+    column: "owner_user_id",
+    since: "023_account_links.sql",
+  },
+  {
+    table: "account_links",
+    column: "manager_email",
+    since: "023_account_links.sql",
+  },
+  {
+    table: "account_links",
+    column: "manager_user_id",
+    since: "023_account_links.sql",
+  },
+  {
+    table: "account_links",
+    column: "status",
+    since: "023_account_links.sql",
+  },
+  {
+    table: "account_links",
+    column: "granted_at",
+    since: "023_account_links.sql",
+  },
+  {
+    table: "account_links",
+    column: "revoked_at",
+    since: "023_account_links.sql",
+  },
 ];
 
 /** Kompaktes `tabelle.spalte`-Kürzel – Format der `missing`-Liste in /api/health. */
