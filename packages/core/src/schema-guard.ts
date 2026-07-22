@@ -396,6 +396,33 @@ export const EXPECTED_COLUMNS: ExpectedColumn[] = [
     column: "revoked_at",
     since: "023_account_links.sql",
   },
+
+  // --- 024: Verwaltungsanfragen -------------------------------------------
+  {
+    table: "management_inquiries",
+    column: "user_id",
+    since: "024_management_inquiries.sql",
+  },
+  {
+    table: "management_inquiries",
+    column: "name",
+    since: "024_management_inquiries.sql",
+  },
+  {
+    table: "management_inquiries",
+    column: "email",
+    since: "024_management_inquiries.sql",
+  },
+  {
+    table: "management_inquiries",
+    column: "phone",
+    since: "024_management_inquiries.sql",
+  },
+  {
+    table: "management_inquiries",
+    column: "status",
+    since: "024_management_inquiries.sql",
+  },
 ];
 
 /** Kompaktes `tabelle.spalte`-Kürzel – Format der `missing`-Liste in /api/health. */

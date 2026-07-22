@@ -20,6 +20,10 @@ import { formatCurrency } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { CityTable } from "./CityTable";
+import {
+  ManagementInquiriesTable,
+  type ManagementInquiryRow,
+} from "./ManagementInquiriesTable";
 import { UnitsByCityChart } from "./UnitsByCityChart";
 import { WeeklyRegistrationsChart } from "./WeeklyRegistrationsChart";
 import { MrrHistoryChart } from "./MrrHistoryChart";
@@ -181,6 +185,14 @@ export default async function AdminPage() {
     supabase.rpc("admin_portfolio_distribution"),
   ]);
 
+  // Verwaltungsanfragen (eigene RPC, fehlertolerant vor Migration 024).
+  const { data: inquiriesData } = await supabase.rpc(
+    "admin_list_management_inquiries",
+  );
+  const inquiries = (
+    Array.isArray(inquiriesData) ? inquiriesData : []
+  ) as unknown as ManagementInquiryRow[];
+
   const stats: AdminStats = parseAdminStats(statsData);
   const cities = parseCityStats(cityData);
   const revenue = computeRevenue(parseRevenueRows(revenueData), buildPriceMap());
@@ -228,6 +240,13 @@ export default async function AdminPage() {
             </CardContent>
           </Card>
         </Link>
+
+        <div className="mt-4">
+          <h3 className="mb-2 text-sm font-semibold text-neutral-700">
+            Verwaltungsanfragen
+          </h3>
+          <ManagementInquiriesTable rows={inquiries} />
+        </div>
       </section>
 
       {/* Umsatz */}

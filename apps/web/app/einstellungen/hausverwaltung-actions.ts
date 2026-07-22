@@ -10,6 +10,8 @@ const MANAGER_LABEL = "OA Hausverwaltung";
 
 type LinkState = { error?: string; success?: string };
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 /** Zeitpunkt menschenlesbar (deutsch) für die Benachrichtigungs-Mail. */
 function nowLabel(): string {
   return new Date().toLocaleString("de-DE", {
@@ -125,4 +127,90 @@ export async function unlinkAccount(): Promise<LinkState> {
 
   revalidatePath("/einstellungen");
   return { success: "Die Verknüpfung wurde aufgehoben." };
+}
+
+type InquiryState = { error?: string; success?: string };
+
+/**
+ * Unverbindliche Kontaktanfrage an die OA Hausverwaltung („Verwaltung abgeben").
+ * Speichert die Anfrage, übernimmt die Telefonnummer ins Profil (falls dort
+ * leer) und benachrichtigt die Hausverwaltung per Brevo (replyTo = Nutzer).
+ * Wiederholungsschutz: solange eine Anfrage 'new'/'contacted' ist, kein
+ * erneutes Senden.
+ */
+export async function submitManagementInquiry(
+  formData: FormData,
+): Promise<InquiryState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Bitte melde dich erneut an." };
+
+  const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+
+  if (!name) return { error: "Bitte gib deinen Namen an." };
+  if (!EMAIL_REGEX.test(email)) {
+    return { error: "Bitte gib eine gültige E-Mail-Adresse an." };
+  }
+  if (phone.length < 6) {
+    return { error: "Bitte gib eine gültige Telefonnummer an (min. 6 Zeichen)." };
+  }
+
+  // Wiederholungsschutz: offene Anfrage vorhanden?
+  const { data: openInquiry } = await supabase
+    .from("management_inquiries")
+    .select("id")
+    .eq("user_id", user.id)
+    .in("status", ["new", "contacted"])
+    .limit(1)
+    .maybeSingle();
+  if (openInquiry) {
+    revalidatePath("/einstellungen");
+    return { success: "Deine Anfrage liegt der OA Hausverwaltung bereits vor." };
+  }
+
+  const { error: insertError } = await supabase
+    .from("management_inquiries")
+    .insert({ user_id: user.id, name, email, phone, status: "new" });
+  if (insertError) {
+    return { error: `Anfrage fehlgeschlagen: ${insertError.message}` };
+  }
+
+  // Telefonnummer ins Profil übernehmen, falls dort noch keine hinterlegt ist.
+  const [{ data: profile }, propertiesCount, unitsCount] = await Promise.all([
+    supabase.from("users").select("phone").eq("id", user.id).maybeSingle(),
+    supabase.from("properties").select("id", { count: "exact", head: true }),
+    supabase.from("units").select("id", { count: "exact", head: true }),
+  ]);
+  if (!profile?.phone?.trim()) {
+    await supabase.from("users").update({ phone }).eq("id", user.id);
+  }
+
+  const propCount = propertiesCount.count ?? 0;
+  const unitCount = unitsCount.count ?? 0;
+
+  // Benachrichtigung an die Hausverwaltung (Antwort geht direkt an den Nutzer).
+  await sendBrevoEmail({
+    to: MANAGER_EMAIL,
+    replyTo: email,
+    subject: `tefter-Anfrage Verwaltung: ${name}`,
+    html: tefterEmailShell(
+      `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#14171a;">Ein tefter-Nutzer möchte von der ${MANAGER_LABEL} zur Übernahme der Verwaltung kontaktiert werden.</p>
+       <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0;font-size:15px;line-height:1.7;color:#4e565b;">
+         <tr><td style="padding-right:12px;"><strong>Name:</strong></td><td>${name}</td></tr>
+         <tr><td style="padding-right:12px;"><strong>E-Mail:</strong></td><td>${email}</td></tr>
+         <tr><td style="padding-right:12px;"><strong>Telefon:</strong></td><td>${phone}</td></tr>
+         <tr><td style="padding-right:12px;"><strong>Objekte:</strong></td><td>${propCount}</td></tr>
+         <tr><td style="padding-right:12px;"><strong>Einheiten:</strong></td><td>${unitCount}</td></tr>
+         <tr><td style="padding-right:12px;"><strong>Zeitpunkt:</strong></td><td>${nowLabel()}</td></tr>
+       </table>
+       <p style="margin:0;font-size:14px;line-height:1.6;color:#4e565b;">Eine Antwort auf diese E-Mail erreicht den Nutzer direkt.</p>`,
+    ),
+  });
+
+  revalidatePath("/einstellungen");
+  return { success: "Anfrage gesendet – wir melden uns bei dir!" };
 }

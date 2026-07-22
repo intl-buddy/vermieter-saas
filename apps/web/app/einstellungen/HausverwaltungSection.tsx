@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { linkAccount, unlinkAccount } from "./hausverwaltung-actions";
+import { KontaktanfrageBlock } from "./KontaktanfrageBlock";
 
 /** Formatiert ein ISO-Datum als deutsches Datum. */
 function formatGrantedAt(iso: string | null): string {
@@ -39,9 +40,15 @@ function formatGrantedAt(iso: string | null): string {
  */
 export function HausverwaltungSection({
   linkedAt,
+  contactDefaults,
+  openInquiry,
 }: {
   /** ISO-Zeitpunkt der aktiven Verknüpfung, oder null. */
   linkedAt: string | null;
+  /** Vorbelegung des Kontaktanfrage-Dialogs (Name/E-Mail/Telefon). */
+  contactDefaults: { name: string; email: string; phone: string };
+  /** Offene Verwaltungsanfrage (status 'new'/'contacted'), sonst null. */
+  openInquiry: { createdAt: string } | null;
 }) {
   const isLinked = Boolean(linkedAt);
 
@@ -145,6 +152,11 @@ export function HausverwaltungSection({
               </>
             ) : (
               <>
+                <KontaktanfrageBlock
+                  defaults={contactDefaults}
+                  inquiry={openInquiry}
+                />
+
                 <div className="font-medium">Hausverwaltung</div>
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   Gib der OA Hausverwaltung Zugriff auf dein Konto, damit sie

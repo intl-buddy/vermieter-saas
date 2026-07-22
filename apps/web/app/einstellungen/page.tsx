@@ -33,15 +33,25 @@ export default async function EinstellungenPage() {
     supabase.from("units").select("id", { count: "exact", head: true }),
   ]);
 
-  // Aktive Verknüpfung mit der Hausverwaltung (falls vorhanden).
-  const { data: activeLink } = await supabase
-    .from("account_links")
-    .select("granted_at")
-    .eq("owner_user_id", user.id)
-    .eq("status", "active")
-    .order("granted_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // Aktive Verknüpfung + offene Verwaltungsanfrage der Hausverwaltung.
+  const [{ data: activeLink }, { data: openInquiry }] = await Promise.all([
+    supabase
+      .from("account_links")
+      .select("granted_at")
+      .eq("owner_user_id", user.id)
+      .eq("status", "active")
+      .order("granted_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("management_inquiries")
+      .select("created_at")
+      .eq("user_id", user.id)
+      .in("status", ["new", "contacted"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   const plan = profile?.plan ?? "trial";
   const subscriptionStatus = profile?.subscription_status ?? "trialing";
@@ -127,7 +137,17 @@ export default async function EinstellungenPage() {
           Verknüpfe dein Konto mit der OA Hausverwaltung – Freigabe statt
           Passwort-Weitergabe.
         </p>
-        <HausverwaltungSection linkedAt={activeLink?.granted_at ?? null} />
+        <HausverwaltungSection
+          linkedAt={activeLink?.granted_at ?? null}
+          contactDefaults={{
+            name: profile?.full_name ?? "",
+            email: user.email ?? "",
+            phone: profile?.phone ?? "",
+          }}
+          openInquiry={
+            openInquiry ? { createdAt: openInquiry.created_at } : null
+          }
+        />
       </div>
 
       <div className="mt-10">

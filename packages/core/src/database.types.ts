@@ -52,6 +52,43 @@ export type Database = {
           },
         ]
       }
+      management_inquiries: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          phone: string
+          status: Database["public"]["Enums"]["management_inquiry_status"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          phone: string
+          status?: Database["public"]["Enums"]["management_inquiry_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          phone?: string
+          status?: Database["public"]["Enums"]["management_inquiry_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "management_inquiries_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_runs: {
         Row: {
           created_at: string
@@ -1226,6 +1263,17 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      admin_list_management_inquiries: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      admin_set_inquiry_status: {
+        Args: {
+          p_inquiry_id: string
+          p_status: Database["public"]["Enums"]["management_inquiry_status"]
+        }
+        Returns: undefined
+      }
       my_managed_accounts: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1309,6 +1357,7 @@ export type Database = {
       dunning_status: "draft" | "sent" | "resolved" | "obsolete"
       handover_status: "draft" | "completed"
       handover_type: "move_in" | "move_out"
+      management_inquiry_status: "new" | "contacted" | "closed"
       operating_cost_type:
         | "property_tax"
         | "water_supply"
