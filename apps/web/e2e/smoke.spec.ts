@@ -6,7 +6,9 @@ import { test, expect } from "@playwright/test";
 test("Dashboard zeigt 4 KPI-Karten", async ({ page }) => {
   await page.goto("/dashboard");
   await expect(page.getByText("Objekte gesamt")).toBeVisible();
-  await expect(page.getByText("Offene Posten")).toBeVisible();
+  // Exakter Text: „Offene Posten" käme sonst auch in der Statistik-Sektion
+  // („Offene Posten gesamt", „… nach Mieter") vor und träfe mehrere Elemente.
+  await expect(page.getByText("Offene Posten", { exact: true })).toBeVisible();
   await expect(page.getByText("Mieter im Rückstand")).toBeVisible();
   await expect(page.getByText("Offene Aufgaben")).toBeVisible();
 });
@@ -56,8 +58,10 @@ test("/preise zeigt die vier Tarif-Karten", async ({ page }) => {
     await expect(page.getByRole("heading", { name: plan })).toBeVisible();
   }
   // Abrechnungsintervall-Umschalter (Preise kommen aus PLANS, s. CLAUDE.md).
-  await expect(page.getByText("Monatlich", { exact: true })).toBeVisible();
-  await expect(page.getByText("Jährlich", { exact: true })).toBeVisible();
+  // Als Buttons ansprechen: „Jährlich" rendert zusammen mit dem Spar-Badge
+  // („~20 % sparen") in einem Knoten, ein exakter Text-Match schlägt daher fehl.
+  await expect(page.getByRole("button", { name: "Monatlich" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Jährlich" })).toBeVisible();
 });
 
 test("/vorlagen zeigt die drei Karten", async ({ page }) => {
