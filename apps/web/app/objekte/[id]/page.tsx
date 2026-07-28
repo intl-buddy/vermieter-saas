@@ -2,7 +2,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Receipt } from "lucide-react";
 import type { Database } from "@repo/core";
+import { canWrite } from "@repo/core";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/account-context";
+import { getUserAccessStatus } from "@/lib/access";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -13,6 +16,8 @@ import { UnitForm } from "./UnitForm";
 import { TenantForm } from "./TenantForm";
 import { TenantActions } from "./TenantActions";
 import { UnitProtocolSection, type UnitProtocol } from "./UnitProtocolSection";
+import { DocumentsSection } from "./DocumentsSection";
+import { listFolderContents, type FolderContents } from "./documents-actions";
 import type { TenantValues } from "./TenantEditDialog";
 
 type UnitType = Database["public"]["Enums"]["unit_type"];
@@ -172,6 +177,21 @@ export default async function ObjektDetailPage({
       protocolsByUnit.set(p.unit_id, list);
     }
   }
+
+  // Digitaler Ordner: Schreibrechte (Abo/Lesemodus) und Wurzelinhalt vorladen.
+  const { effectiveUserId } = await getEffectiveUserId(supabase, user.id);
+  const accessStatus = await getUserAccessStatus(supabase, effectiveUserId);
+  const documentsWritable = canWrite(accessStatus);
+  const initialDocs = await listFolderContents(property.id, null);
+  const documentsContents: FolderContents =
+    "error" in initialDocs
+      ? {
+          propertyName: property.name,
+          breadcrumb: [{ id: null, name: property.name }],
+          folders: [],
+          documents: [],
+        }
+      : initialDocs;
 
   return (
     <AppShell title={property.name} userEmail={user.email ?? ""}>
@@ -425,6 +445,13 @@ export default async function ObjektDetailPage({
           </CardContent>
         </Card>
       </section>
+
+      <DocumentsSection
+        propertyId={property.id}
+        ownerUserId={effectiveUserId}
+        canWrite={documentsWritable}
+        initialContents={documentsContents}
+      />
     </AppShell>
   );
 }

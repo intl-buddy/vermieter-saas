@@ -15,9 +15,16 @@ const EXPORT_TABLES: { table: string; file: string }[] = [
   { table: "billing_statements", file: "abrechnungen-positionen.csv" },
   { table: "dunning_letters", file: "mahnungen.csv" },
   { table: "tenant_person_periods", file: "personenzeiten.csv" },
+  { table: "property_folders", file: "dokumente-ordner.csv" },
+  { table: "property_documents", file: "dokumente.csv" },
 ];
 
-const FILE_BUCKETS = ["receipts", "dunning", "statements"] as const;
+const FILE_BUCKETS = [
+  "receipts",
+  "dunning",
+  "statements",
+  "property-documents",
+] as const;
 
 /** Ein CSV-Feld robust escapen (Trennzeichen, Anführungszeichen, Zeilenumbruch). */
 function csvCell(value: unknown): string {
@@ -114,7 +121,8 @@ export async function buildUserExportZip(
     "LIESMICH.txt",
     "Dieser Export enthält alle deine in tefter gespeicherten Daten.\r\n" +
       "- Ordner 'daten': alle Tabellen als CSV (Semikolon-getrennt, UTF-8).\r\n" +
-      "- Ordner 'dateien': alle hochgeladenen Belege, Mahnungen und Abrechnungs-PDFs.\r\n\r\n" +
+      "- Ordner 'dateien': alle hochgeladenen Belege, Mahnungen, Abrechnungs-PDFs\r\n" +
+      "  und Objekt-Dokumente (Digitaler Ordner).\r\n\r\n" +
       "Export erstellt gemäß Art. 20 DSGVO (Recht auf Datenübertragbarkeit).\r\n",
   );
 

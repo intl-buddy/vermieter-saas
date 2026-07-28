@@ -89,6 +89,107 @@ export type Database = {
           },
         ]
       }
+      property_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_folder_id: string | null
+          property_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_folder_id?: string | null
+          property_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_folder_id?: string | null
+          property_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_folders_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_folders_property_id_fkey"
+            columns: ["property_id"]
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            referencedRelation: "property_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_documents: {
+        Row: {
+          file_name: string
+          folder_id: string | null
+          id: string
+          mime_type: string
+          property_id: string
+          size_bytes: number
+          storage_path: string
+          uploaded_at: string
+          user_id: string
+        }
+        Insert: {
+          file_name: string
+          folder_id?: string | null
+          id?: string
+          mime_type: string
+          property_id: string
+          size_bytes: number
+          storage_path: string
+          uploaded_at?: string
+          user_id: string
+        }
+        Update: {
+          file_name?: string
+          folder_id?: string | null
+          id?: string
+          mime_type?: string
+          property_id?: string
+          size_bytes?: number
+          storage_path?: string
+          uploaded_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_documents_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_documents_property_id_fkey"
+            columns: ["property_id"]
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_documents_folder_id_fkey"
+            columns: ["folder_id"]
+            referencedRelation: "property_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_runs: {
         Row: {
           created_at: string

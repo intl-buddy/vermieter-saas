@@ -12,7 +12,12 @@ import { getStripe } from "@/lib/stripe";
 type Admin = ReturnType<typeof createAdminClient>;
 
 /** Speicher-Buckets, in denen nutzerbezogene Dateien unter `${userId}/…` liegen. */
-const USER_BUCKETS = ["receipts", "dunning", "statements"] as const;
+const USER_BUCKETS = [
+  "receipts",
+  "dunning",
+  "statements",
+  "property-documents",
+] as const;
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Erinnerungsmails höchstens alle 30 Tage. */
 const REMINDER_INTERVAL_DAYS = 30;

@@ -423,6 +423,63 @@ export const EXPECTED_COLUMNS: ExpectedColumn[] = [
     column: "status",
     since: "024_management_inquiries.sql",
   },
+
+  // --- 025: Digitaler Ordner (Dokumente je Objekt) ------------------------
+  {
+    table: "property_folders",
+    column: "user_id",
+    since: "025_property_documents.sql",
+  },
+  {
+    table: "property_folders",
+    column: "property_id",
+    since: "025_property_documents.sql",
+  },
+  {
+    table: "property_folders",
+    column: "parent_folder_id",
+    since: "025_property_documents.sql",
+  },
+  {
+    table: "property_folders",
+    column: "name",
+    since: "025_property_documents.sql",
+  },
+  {
+    table: "property_documents",
+    column: "user_id",
+    since: "025_property_documents.sql",
+  },
+  {
+    table: "property_documents",
+    column: "property_id",
+    since: "025_property_documents.sql",
+  },
+  {
+    table: "property_documents",
+    column: "folder_id",
+    since: "025_property_documents.sql",
+  },
+  {
+    table: "property_documents",
+    column: "file_name",
+    since: "025_property_documents.sql",
+  },
+  {
+    table: "property_documents",
+    column: "storage_path",
+    since: "025_property_documents.sql",
+  },
+  {
+    table: "property_documents",
+    column: "mime_type",
+    since: "025_property_documents.sql",
+  },
+  {
+    table: "property_documents",
+    column: "size_bytes",
+    since: "025_property_documents.sql",
+  },
 ];
 
 /** Kompaktes `tabelle.spalte`-Kürzel – Format der `missing`-Liste in /api/health. */
