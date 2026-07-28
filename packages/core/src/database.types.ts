@@ -39,156 +39,87 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "account_links_owner_user_id_fkey"
-            columns: ["owner_user_id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "account_links_manager_user_id_fkey"
             columns: ["manager_user_id"]
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "account_links_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
       }
-      management_inquiries: {
+      admin_metrics_snapshots: {
         Row: {
+          billing_runs_total: number
           created_at: string
-          email: string
+          dunnings_total: number
           id: string
-          name: string
-          phone: string
-          status: Database["public"]["Enums"]["management_inquiry_status"]
-          user_id: string
+          mrr_gross: number
+          objects_total: number
+          protocols_total: number
+          snapshot_date: string
+          tenancies_active: number
+          units_total: number
+          users_active_sub: number
+          users_readonly: number
+          users_total: number
+          users_trial: number
         }
         Insert: {
+          billing_runs_total?: number
           created_at?: string
-          email: string
+          dunnings_total?: number
           id?: string
-          name: string
-          phone: string
-          status?: Database["public"]["Enums"]["management_inquiry_status"]
-          user_id: string
+          mrr_gross?: number
+          objects_total?: number
+          protocols_total?: number
+          snapshot_date: string
+          tenancies_active?: number
+          units_total?: number
+          users_active_sub?: number
+          users_readonly?: number
+          users_total?: number
+          users_trial?: number
         }
         Update: {
+          billing_runs_total?: number
           created_at?: string
-          email?: string
+          dunnings_total?: number
           id?: string
-          name?: string
-          phone?: string
-          status?: Database["public"]["Enums"]["management_inquiry_status"]
-          user_id?: string
+          mrr_gross?: number
+          objects_total?: number
+          protocols_total?: number
+          snapshot_date?: string
+          tenancies_active?: number
+          units_total?: number
+          users_active_sub?: number
+          users_readonly?: number
+          users_total?: number
+          users_trial?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "management_inquiries_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      property_folders: {
+      admin_price_catalog: {
         Row: {
-          created_at: string
-          id: string
-          name: string
-          parent_folder_id: string | null
-          property_id: string
-          user_id: string
+          billing_interval: string
+          monthly_gross: number
+          price_id: string
         }
         Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          parent_folder_id?: string | null
-          property_id: string
-          user_id: string
+          billing_interval?: string
+          monthly_gross?: number
+          price_id: string
         }
         Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          parent_folder_id?: string | null
-          property_id?: string
-          user_id?: string
+          billing_interval?: string
+          monthly_gross?: number
+          price_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "property_folders_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "property_folders_property_id_fkey"
-            columns: ["property_id"]
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "property_folders_parent_folder_id_fkey"
-            columns: ["parent_folder_id"]
-            referencedRelation: "property_folders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      property_documents: {
-        Row: {
-          file_name: string
-          folder_id: string | null
-          id: string
-          mime_type: string
-          property_id: string
-          size_bytes: number
-          storage_path: string
-          uploaded_at: string
-          user_id: string
-        }
-        Insert: {
-          file_name: string
-          folder_id?: string | null
-          id?: string
-          mime_type: string
-          property_id: string
-          size_bytes: number
-          storage_path: string
-          uploaded_at?: string
-          user_id: string
-        }
-        Update: {
-          file_name?: string
-          folder_id?: string | null
-          id?: string
-          mime_type?: string
-          property_id?: string
-          size_bytes?: number
-          storage_path?: string
-          uploaded_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "property_documents_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "property_documents_property_id_fkey"
-            columns: ["property_id"]
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "property_documents_folder_id_fkey"
-            columns: ["folder_id"]
-            referencedRelation: "property_folders"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       billing_runs: {
         Row: {
@@ -580,6 +511,12 @@ export type Database = {
           {
             foreignKeyName: "handover_protocols_tenant_id_fkey"
             columns: ["tenant_id"]
+            referencedRelation: "tenant_balances"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "handover_protocols_tenant_id_fkey"
+            columns: ["tenant_id"]
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
@@ -591,6 +528,43 @@ export type Database = {
           },
           {
             foreignKeyName: "handover_protocols_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      management_inquiries: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          phone: string
+          status: Database["public"]["Enums"]["management_inquiry_status"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          phone: string
+          status?: Database["public"]["Enums"]["management_inquiry_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          phone?: string
+          status?: Database["public"]["Enums"]["management_inquiry_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "management_inquiries_user_id_fkey"
             columns: ["user_id"]
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -683,6 +657,12 @@ export type Database = {
           {
             foreignKeyName: "operating_costs_records_tenant_id_fkey"
             columns: ["tenant_id"]
+            referencedRelation: "tenant_balances"
+            referencedColumns: ["tenant_id"]
+          },
+          {
+            foreignKeyName: "operating_costs_records_tenant_id_fkey"
+            columns: ["tenant_id"]
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
@@ -752,6 +732,107 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "properties_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_documents: {
+        Row: {
+          file_name: string
+          folder_id: string | null
+          id: string
+          mime_type: string
+          property_id: string
+          size_bytes: number
+          storage_path: string
+          uploaded_at: string
+          user_id: string
+        }
+        Insert: {
+          file_name: string
+          folder_id?: string | null
+          id?: string
+          mime_type: string
+          property_id: string
+          size_bytes: number
+          storage_path: string
+          uploaded_at?: string
+          user_id: string
+        }
+        Update: {
+          file_name?: string
+          folder_id?: string | null
+          id?: string
+          mime_type?: string
+          property_id?: string
+          size_bytes?: number
+          storage_path?: string
+          uploaded_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_documents_folder_id_fkey"
+            columns: ["folder_id"]
+            referencedRelation: "property_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_documents_property_id_fkey"
+            columns: ["property_id"]
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_documents_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_folder_id: string | null
+          property_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_folder_id?: string | null
+          property_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_folder_id?: string | null
+          property_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            referencedRelation: "property_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_folders_property_id_fkey"
+            columns: ["property_id"]
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_folders_user_id_fkey"
             columns: ["user_id"]
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -888,6 +969,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      schema_migrations: {
+        Row: {
+          executed_at: string
+          name: string
+        }
+        Insert: {
+          executed_at?: string
+          name: string
+        }
+        Update: {
+          executed_at?: string
+          name?: string
+        }
+        Relationships: []
       }
       support_tickets: {
         Row: {
@@ -1360,12 +1456,14 @@ export type Database = {
       }
     }
     Functions: {
-      has_account_access: {
-        Args: { target_user_id: string }
-        Returns: boolean
-      }
-      admin_list_management_inquiries: {
-        Args: Record<PropertyKey, never>
+      admin_feature_usage: { Args: never; Returns: Json }
+      admin_funnel_stats: { Args: never; Returns: Json }
+      admin_list_management_inquiries: { Args: never; Returns: Json }
+      admin_list_tickets: { Args: never; Returns: Json }
+      admin_metrics_history: { Args: never; Returns: Json }
+      admin_portfolio_distribution: { Args: never; Returns: Json }
+      admin_reply_ticket: {
+        Args: { p_message: string; p_ticket_id: string }
         Returns: Json
       }
       admin_set_inquiry_status: {
@@ -1375,55 +1473,51 @@ export type Database = {
         }
         Returns: undefined
       }
-      my_managed_accounts: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          owner_user_id: string
-          owner_name: string
-          owner_email: string
-          granted_at: string
-        }[]
-      }
-      admin_feature_usage: { Args: Record<PropertyKey, never>; Returns: Json }
-      admin_funnel_stats: { Args: Record<PropertyKey, never>; Returns: Json }
-      admin_list_tickets: { Args: Record<PropertyKey, never>; Returns: Json }
-      admin_reply_ticket: {
-        Args: { p_ticket_id: string; p_message: string }
-        Returns: Json
-      }
       admin_set_ticket_note: {
-        Args: { p_ticket_id: string; p_note: string }
+        Args: { p_note: string; p_ticket_id: string }
         Returns: undefined
       }
       admin_set_ticket_status: {
         Args: {
-          p_ticket_id: string
           p_status: Database["public"]["Enums"]["ticket_status"]
+          p_ticket_id: string
         }
         Returns: undefined
       }
-      admin_metrics_history: { Args: Record<PropertyKey, never>; Returns: Json }
-      admin_portfolio_distribution: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      admin_revenue_stats: { Args: Record<PropertyKey, never>; Returns: Json }
-      admin_stats: { Args: Record<PropertyKey, never>; Returns: Json }
-      admin_stats_by_city: { Args: Record<PropertyKey, never>; Returns: Json }
-      admin_sync_price_catalog: { Args: { p_entries: Json }; Returns: undefined }
-      capture_admin_snapshot: {
-        Args: Record<PropertyKey, never>
+      admin_stats: { Args: never; Returns: Json }
+      admin_stats_by_city: { Args: never; Returns: Json }
+      admin_sync_price_catalog: {
+        Args: { p_entries: Json }
         Returns: undefined
       }
-      is_admin_caller: { Args: Record<PropertyKey, never>; Returns: boolean }
+      admin_user_access_status: {
+        Args: never
+        Returns: {
+          access_status: string
+          created_at: string
+          user_id: string
+        }[]
+      }
+      capture_admin_snapshot: { Args: never; Returns: undefined }
       generate_monthly_charges: { Args: never; Returns: number }
       generate_tasks_from_templates: { Args: never; Returns: number }
+      has_account_access: { Args: { target_user_id: string }; Returns: boolean }
+      is_admin_caller: { Args: never; Returns: boolean }
       mark_overdue_tasks: { Args: never; Returns: number }
       missing_schema_columns: {
         Args: { expected: Json }
         Returns: {
           missing_column: string
           missing_table: string
+        }[]
+      }
+      my_managed_accounts: {
+        Args: never
+        Returns: {
+          granted_at: string
+          owner_email: string
+          owner_name: string
+          owner_user_id: string
         }[]
       }
       open_charges: {
@@ -1632,6 +1726,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_link_status: ["active", "revoked"],
       allocation_key: [
         "living_area",
         "persons",
@@ -1653,6 +1748,7 @@ export const Constants = {
       dunning_status: ["draft", "sent", "resolved", "obsolete"],
       handover_status: ["draft", "completed"],
       handover_type: ["move_in", "move_out"],
+      management_inquiry_status: ["new", "contacted", "closed"],
       operating_cost_type: [
         "property_tax",
         "water_supply",
