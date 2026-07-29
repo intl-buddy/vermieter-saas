@@ -11,3 +11,4 @@ export * from "./support";
 export * from "./account-access";
 export * from "./inquiry";
 export * from "./lease";
+export * from "./self-deletion";

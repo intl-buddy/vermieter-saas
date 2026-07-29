@@ -10,6 +10,7 @@ import { AboSection } from "./AboSection";
 import { DatenExportSection } from "./DatenExportSection";
 import { DokumenteSection } from "./DokumenteSection";
 import { HausverwaltungSection } from "./HausverwaltungSection";
+import { GefahrenzoneSection } from "./GefahrenzoneSection";
 
 export const metadata = { title: "Einstellungen · tefter" };
 
@@ -156,6 +157,16 @@ export default async function EinstellungenPage() {
           Exportiere jederzeit eine vollständige Kopie deiner Daten.
         </p>
         <DatenExportSection />
+      </div>
+
+      <div className="mt-12">
+        <h2 className="text-xl font-bold tracking-tight text-danger-700">
+          Gefahrenzone
+        </h2>
+        <p className="mb-4 mt-1 text-sm text-muted-foreground">
+          Unwiderrufliche Aktionen. Bitte mit Bedacht.
+        </p>
+        <GefahrenzoneSection hasActiveSubscription={access === "active"} />
       </div>
 
       <Separator className="mt-12" />

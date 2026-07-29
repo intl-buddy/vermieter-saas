@@ -1340,6 +1340,7 @@ export type Database = {
           created_at: string
           current_period_end: string | null
           deleted_at: string | null
+          deletion_requested_at: string | null
           deletion_warned_at: string | null
           dunning_deadline_days: number
           dunning_fee: number
@@ -1372,6 +1373,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           deleted_at?: string | null
+          deletion_requested_at?: string | null
           deletion_warned_at?: string | null
           dunning_deadline_days?: number
           dunning_fee?: number
@@ -1404,6 +1406,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           deleted_at?: string | null
+          deletion_requested_at?: string | null
           deletion_warned_at?: string | null
           dunning_deadline_days?: number
           dunning_fee?: number
@@ -1462,6 +1465,7 @@ export type Database = {
       admin_list_tickets: { Args: never; Returns: Json }
       admin_metrics_history: { Args: never; Returns: Json }
       admin_portfolio_distribution: { Args: never; Returns: Json }
+      admin_revenue_stats: { Args: never; Returns: Json }
       admin_reply_ticket: {
         Args: { p_message: string; p_ticket_id: string }
         Returns: Json

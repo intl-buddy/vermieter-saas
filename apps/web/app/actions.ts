@@ -1,10 +1,13 @@
 "use server";
 
+import type { User } from "@supabase/supabase-js";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "../lib/supabase/server";
+import type { SupabaseServerClient } from "../lib/supabase/server";
 import { ensureUserRecord, translateAuthError } from "../lib/auth";
 import { siteUrlFromHeaders } from "../lib/site-url";
+import { sendBrevoEmail, tefterEmailShell } from "../lib/email";
 
 export type AuthState = {
   error?: string;
@@ -73,7 +76,64 @@ export async function login(
     return { error: translateAuthError(error.message) };
   }
 
-  redirect(await postLoginDestination(supabase, data.user?.id));
+  // Vorgemerkte Konto-Löschung durch den Login abbrechen (Feld zurücksetzen +
+  // Bestätigungsmail). Das Ergebnis steuert den „Willkommen zurück"-Toast.
+  const cancelledDeletion = data.user
+    ? await cancelPendingDeletion(supabase, data.user)
+    : false;
+
+  const destination = await postLoginDestination(supabase, data.user?.id);
+  redirect(
+    cancelledDeletion
+      ? `${destination}?konto-wiederhergestellt=1`
+      : destination,
+  );
+}
+
+/**
+ * Bricht eine vom Nutzer vorgemerkte Konto-Löschung ab, sobald er sich wieder
+ * einloggt: `deletion_requested_at` zurück auf NULL und eine Bestätigungsmail.
+ * Gibt zurück, ob tatsächlich eine Löschung abgebrochen wurde.
+ */
+async function cancelPendingDeletion(
+  supabase: SupabaseServerClient,
+  user: User,
+): Promise<boolean> {
+  const { data: profile } = await supabase
+    .from("users")
+    .select("deletion_requested_at, full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!profile?.deletion_requested_at) return false;
+
+  const { error } = await supabase
+    .from("users")
+    .update({ deletion_requested_at: null })
+    .eq("id", user.id);
+  if (error) return false;
+
+  if (user.email) {
+    const name = profile.full_name?.trim() || "Vermieter:in";
+    const body = `
+      <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#14171a;">Hallo ${name},</p>
+      <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#4e565b;">
+        schön, dass du wieder da bist! Die vorgemerkte Löschung deines tefter-Kontos wurde durch deinen Login <strong>abgebrochen</strong> – deine Daten bleiben vollständig erhalten.
+      </p>
+      <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#4e565b;">
+        Falls du das nicht warst, ändere bitte umgehend dein Passwort.
+      </p>
+      <p style="margin:24px 0 0 0;font-size:15px;line-height:1.6;color:#14171a;">Dein tefter-Team</p>`;
+    // Best effort – ein Mail-Fehler darf den Login nicht blockieren.
+    await sendBrevoEmail({
+      to: user.email,
+      toName: name,
+      subject: "Deine tefter-Konto-Löschung wurde abgebrochen",
+      html: tefterEmailShell(body),
+    });
+  }
+
+  return true;
 }
 
 /**

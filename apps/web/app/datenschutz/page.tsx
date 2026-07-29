@@ -126,7 +126,10 @@ export default function DatenschutzPage() {
         deine Daten sichern und exportieren kannst. Nach Ablauf dieser Lesephase
         werden die Daten – vorbehaltlich gesetzlicher Aufbewahrungspflichten (z.
         B. § 147 AO, § 257 HGB) – vollständig und endgültig gelöscht.
-        Server-Logs werden nach spätestens sieben Tagen gelöscht.
+        Server-Logs werden nach spätestens sieben Tagen gelöscht. Du kannst dein
+        Konto außerdem jederzeit selbst in den Einstellungen löschen; die
+        Löschung erfolgt nach einer Sicherheitsfrist von 7 Tagen, innerhalb derer
+        du sie durch einen erneuten Login abbrechen kannst.
       </p>
 
       <h2 className="mb-2 mt-8 text-lg font-semibold text-foreground">

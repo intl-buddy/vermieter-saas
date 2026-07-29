@@ -480,6 +480,13 @@ export const EXPECTED_COLUMNS: ExpectedColumn[] = [
     column: "size_bytes",
     since: "025_property_documents.sql",
   },
+
+  // --- 026: Selbstlöschung des Kontos -------------------------------------
+  {
+    table: "users",
+    column: "deletion_requested_at",
+    since: "026_account_self_deletion.sql",
+  },
 ];
 
 /** Kompaktes `tabelle.spalte`-Kürzel – Format der `missing`-Liste in /api/health. */

@@ -3,6 +3,8 @@ import {
   getAccessStatus,
   READONLY_MONTHS,
   DELETION_GRACE_DAYS,
+  isDueForDeletion,
+  planStripeCleanup,
 } from "@repo/core";
 import type Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -190,11 +192,18 @@ export async function deleteExpiredUsers(
   now: Date,
 ): Promise<number> {
   const cutoff = new Date(now.getTime() - DELETION_GRACE_DAYS * DAY_MS);
+  const cutoffIso = cutoff.toISOString();
+  // Zwei Auslöser, EINE Löschroutine: Ende der Lesefrist ODER selbst vorgemerkte
+  // Löschung (deletion_requested_at), jeweils über die Karenz hinaus.
   const { data: users } = await admin
     .from("users")
-    .select("id, email, full_name, stripe_customer_id, access_until")
-    .lt("access_until", cutoff.toISOString())
-    .is("deleted_at", null);
+    .select(
+      "id, email, full_name, stripe_customer_id, access_until, deletion_requested_at",
+    )
+    .is("deleted_at", null)
+    .or(
+      `access_until.lt.${cutoffIso},deletion_requested_at.lt.${cutoffIso}`,
+    );
 
   if (!users?.length) return 0;
 
@@ -207,6 +216,21 @@ export async function deleteExpiredUsers(
 
   let deleted = 0;
   for (const u of users) {
+    // Absicherung: nur löschen, wenn ein Auslöser tatsächlich über die Karenz
+    // hinaus liegt (der .or()-Filter oben, hier noch einmal als reine Logik).
+    if (
+      !isDueForDeletion(
+        {
+          access_until: u.access_until,
+          deletion_requested_at: u.deletion_requested_at,
+        },
+        now,
+        DELETION_GRACE_DAYS,
+      )
+    ) {
+      continue;
+    }
+
     // 1) Letzte Bestätigungsmail (vor der Löschung, solange E-Mail bekannt).
     if (u.email) {
       const name = u.full_name?.trim() || "Vermieter:in";
@@ -230,8 +254,8 @@ export async function deleteExpiredUsers(
     // 2) Storage-Dateien
     await deleteUserStorage(admin, u.id);
 
-    // 3) Stripe-Customer
-    if (stripe && u.stripe_customer_id) {
+    // 3) Stripe-Customer löschen (kündigt zugleich ein etwaiges aktives Abo).
+    if (stripe && u.stripe_customer_id && planStripeCleanup(u).deleteCustomer) {
       try {
         await stripe.customers.del(u.stripe_customer_id);
       } catch {
