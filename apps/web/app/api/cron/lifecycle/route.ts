@@ -32,7 +32,16 @@ async function handle(request: Request) {
 
   try {
     const result = await runLifecycle(new Date());
-    return NextResponse.json({ ok: true, ...result });
+    // Kompakter Report für den manuellen curl-Test …
+    return NextResponse.json({
+      ok: true,
+      processed:
+        result.promotedToReadonly + result.remindersSent + result.usersDeleted,
+      deleted: result.usersDeleted,
+      reminded: result.remindersSent,
+      // … plus die Detailzahlen (rückwärtskompatibel).
+      ...result,
+    });
   } catch (e) {
     return NextResponse.json(
       {

@@ -85,15 +85,37 @@ Entfernt eine Migration eine Spalte, muss sie auch aus der Liste verschwinden.
   (nicht in der DB – dort sind Brevo- und Stripe-SDK verfügbar). Er erledigt:
   1. Trial-Ablauf / Abo-Ende → Lesemodus (`access_until = now()+6 Monate`),
   2. Erinnerungsmails an Lesemodus-Nutzer (höchstens alle 30 Tage),
-  3. endgültige Löschung nach Lesefrist + 7 Tagen Karenz (Storage, Daten,
-     `auth.users`, Stripe-Customer; Nachweis in `deletion_log`, nur user_id-Hash).
-- **Auslösung: Coolify-Scheduled-Task, täglich**, mit dem Secret-Header:
+  3. endgültige Löschung nach Lesefrist + 7 Tagen Karenz **und** nach
+     Selbstlöschung (`deletion_requested_at` + 7 Tage) – dieselbe Routine
+     (Storage, Daten, `auth.users`, Stripe-Customer/-Abo; Nachweis in
+     `deletion_log`, nur user_id-Hash).
+  Die Route ist **idempotent** und liefert einen JSON-Report
+  `{ok, processed, deleted, reminded, …}`.
+- **Einplanung: pg_cron → `run_lifecycle()` → pg_net → Route** (Migration 027).
+  `cron.schedule('daily-lifecycle', '30 3 * * *', 'SELECT public.run_lifecycle();')`.
+  Die SQL-Funktion `run_lifecycle()` (SECURITY DEFINER) stößt die Route per HTTP
+  an – die Business-Logik bleibt bewusst in der Route (getestete TS-/core-Logik),
+  nicht in SQL (keine zweite Wahrheit). **Einmalige Konfiguration** (Secret bleibt
+  aus Git heraus), Secret muss dem App-Env `CRON_SECRET` entsprechen:
+  ```sql
+  ALTER DATABASE postgres SET app.settings.cron_secret = '<CRON_SECRET>';
+  ALTER DATABASE postgres SET app.settings.site_url    = 'https://app.tefter.de';
   ```
-  curl -fsS -X POST -H "x-cron-secret: $CRON_SECRET" \
+- **Manuell anstoßen / testen:**
+  ```bash
+  # direkt gegen die Route (zeigt den JSON-Report):
+  curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" \
        https://<domain>/api/cron/lifecycle
   ```
-  `CRON_SECRET` als Env-Var setzen (siehe `.env.example`). Ohne gültiges Secret
-  antwortet die Route mit 401.
+  ```sql
+  -- über die DB (löst den HTTP-Call via pg_net aus):
+  SELECT public.run_lifecycle();
+  SELECT jobname, schedule FROM cron.job WHERE jobname = 'daily-lifecycle';
+  SELECT status_code, content FROM net._http_response ORDER BY id DESC LIMIT 3;
+  ```
+  Die Route akzeptiert `Authorization: Bearer <secret>` **oder** Header
+  `x-cron-secret`. `CRON_SECRET` als Env-Var setzen (siehe `.env.example`). Ohne
+  gültiges Secret antwortet die Route mit 401.
 - Zugriffsstufen zentral in `getAccessStatus` (packages/core): `active`,
   `trial`, `readonly` (Lesemodus), `locked`. Schreibende Server-Actions werden
   über `assertWriteAccess`/`requireWriteAccess` (`lib/access.ts`) serverseitig

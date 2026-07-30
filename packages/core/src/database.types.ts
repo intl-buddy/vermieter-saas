@@ -1465,6 +1465,7 @@ export type Database = {
       admin_list_tickets: { Args: never; Returns: Json }
       admin_metrics_history: { Args: never; Returns: Json }
       admin_portfolio_distribution: { Args: never; Returns: Json }
+      admin_revenue_stats: { Args: never; Returns: Json }
       admin_reply_ticket: {
         Args: { p_message: string; p_ticket_id: string }
         Returns: Json

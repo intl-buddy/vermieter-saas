@@ -12,3 +12,4 @@ export * from "./account-access";
 export * from "./inquiry";
 export * from "./lease";
 export * from "./self-deletion";
+export * from "./lifecycle-policy";

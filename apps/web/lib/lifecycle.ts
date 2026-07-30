@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
 import {
-  getAccessStatus,
   READONLY_MONTHS,
   DELETION_GRACE_DAYS,
+  REMINDER_INTERVAL_DAYS,
+  shouldPromoteToReadonly,
+  isReminderDue,
   isDueForDeletion,
   planStripeCleanup,
 } from "@repo/core";
@@ -21,8 +23,6 @@ const USER_BUCKETS = [
   "property-documents",
 ] as const;
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** Erinnerungsmails höchstens alle 30 Tage. */
-const REMINDER_INTERVAL_DAYS = 30;
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat("de-DE", {
@@ -64,18 +64,20 @@ export async function promoteExpiredToReadonly(
   let count = 0;
   for (const u of candidates) {
     // Ohne Lesefrist wäre der Zugriff bereits erloschen? Dann Lesefrist geben.
-    const status = getAccessStatus(
-      {
-        subscription_status: u.subscription_status,
-        trial_ends_at: u.trial_ends_at,
-        current_period_end: u.current_period_end,
-        subscription_id: u.subscription_id,
-        cancel_at_period_end: u.cancel_at_period_end,
-        access_until: null,
-      },
-      now,
-    );
-    if (status !== "locked") continue;
+    if (
+      !shouldPromoteToReadonly(
+        {
+          subscription_status: u.subscription_status,
+          trial_ends_at: u.trial_ends_at,
+          current_period_end: u.current_period_end,
+          subscription_id: u.subscription_id,
+          cancel_at_period_end: u.cancel_at_period_end,
+        },
+        now,
+      )
+    ) {
+      continue;
+    }
 
     await admin.from("users").update({ access_until: untilIso }).eq("id", u.id);
     count++;
@@ -100,15 +102,13 @@ export async function sendDeletionReminders(
 
   if (!users?.length) return 0;
 
-  const reminderCutoff = new Date(now.getTime() - REMINDER_INTERVAL_DAYS * DAY_MS);
   let sent = 0;
 
   for (const u of users) {
-    if (!u.access_until || !u.email) continue;
-    // Höchstens alle 30 Tage erinnern.
+    if (!u.email || !u.access_until) continue;
+    // Läuft die Lesefrist noch und ist die letzte Erinnerung > 30 Tage her?
     if (
-      u.deletion_warned_at &&
-      new Date(u.deletion_warned_at).getTime() > reminderCutoff.getTime()
+      !isReminderDue(u.access_until, u.deletion_warned_at, now, REMINDER_INTERVAL_DAYS)
     ) {
       continue;
     }
